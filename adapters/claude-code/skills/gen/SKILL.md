@@ -44,7 +44,13 @@ Guidance for a good plan:
   the architecture/key `figure`(s) by filename; typeset the key `equation`(s) in real LaTeX;
   cover results with `stats`; close with `outro`.
 - **Narration** is spoken verbatim: 1–3 plain sentences per scene, **grounded in the paper's text**
-  (no invented numbers/claims). Spell out symbols for TTS (e.g. "d sub k", "square root").
+  (no invented numbers/claims). **Write for TTS** — it reads text literally and has no math sense:
+  - Spell out symbols/operators: "d sub k", "square root", "less than or equal to".
+  - **Spell single-letter variables as their letter name**, or TTS voices them as a sound, not a
+    letter (e.g. matrix "a" → says "uh", not "ay"). Use: a→"ay", e→"ee", i→"eye", o→"oh", q→"cue",
+    k→"kay", x→"eks", w→"double-u", y→"why", h→"aitch" (others mostly read fine). E.g.
+    *"the query vector cue and the key vector kay"*. `ppv validate` warns on lone letters (except
+    a/A/I, which collide with articles — handle those yourself).
 - **Visuals:** pick the component that best fits each beat — don't force a template. Use `figure`
   only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$`); use
   `comparison`/`stats`/`bullets` to keep it varied. Respect the user's focus and length.

@@ -7,21 +7,23 @@ import numpy as np
 import soundfile as sf
 
 
-def synth(plan: dict, out_dir: str, voice: str | None = None, speed: float = 1.0) -> list[dict]:
+def synth(plan: dict, out_dir: str, voice: str | None = None, speed: float = 1.0,
+          steps: int | None = None) -> list[dict]:
     from supertonic import TTS  # imported lazily so non-TTS commands stay fast
 
     out = Path(out_dir)
     audio = out / "audio"
     audio.mkdir(parents=True, exist_ok=True)
 
-    from .schema import DEFAULT_VOICE
+    from .schema import DEFAULT_VOICE, DEFAULT_TTS_STEPS
     voice = voice or plan.get("meta", {}).get("voice") or DEFAULT_VOICE
+    steps = steps or DEFAULT_TTS_STEPS
     tts = TTS()  # supertonic-3, auto-downloads on first run
     style = tts.get_voice_style(voice)
 
     records = []
     for s in plan["scenes"]:
-        wav, _ = tts.synthesize(s["narration"], style, speed=speed)
+        wav, _ = tts.synthesize(s["narration"], style, total_steps=steps, speed=speed)
         wav = np.asarray(wav).squeeze()
         path = audio / f"scene{s['id']}.wav"
         tts.save_audio(wav, str(path))

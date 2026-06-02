@@ -99,7 +99,7 @@ def cmd_tts(args) -> int:
     plan = _load(args.plan)
     if (rc := _check(plan)) != 0:
         return rc
-    synth(plan, args.out, voice=args.voice)
+    synth(plan, args.out, voice=args.voice, steps=args.steps)
     return 0
 
 
@@ -143,6 +143,8 @@ def main(argv=None) -> int:
     st = sub.add_parser("tts", help="synthesize narration for a scene plan")
     st.add_argument("plan", nargs="?"); st.add_argument("--out", default=None)
     st.add_argument("--voice", default=None)
+    st.add_argument("--steps", type=int, default=None,
+                    help=f"diffusion steps (default {schema.DEFAULT_TTS_STEPS}; lower=faster, higher=smoother)")
     st.add_argument("--list-voices", action="store_true", help="list voice presets and exit")
     st.set_defaults(func=cmd_tts)
 

@@ -74,8 +74,17 @@ DEFAULT_FPS = 30
 DRAFT_RESOLUTION = "810p"
 DRAFT_FPS = 24
 
+# Supertonic diffusion steps: higher = smoother/less robotic, ~linear cost (16 ≈ 2x of 8).
+# Still faster than realtime; TTS is a minority of the pipeline. Override with `ppv tts --steps`.
+DEFAULT_TTS_STEPS = 16
+
 # Characters TTS reads poorly (math/logic symbols) — narration should spell these out.
 _TTS_HOSTILE = set("¬≤≥⟹⟸⟺↔→←×÷≈≠≅≡√∞∑∏∫∂∇∈∉⊂⊆⊃⊇∪∩∧∨∀∃±∓·∘°µΩ⊗⊕")
+# Lone single letters usually mean a math variable, which TTS voices as a sound, not the
+# letter name ("a" -> schwa "uh", not "ay"). Exclude real one-letter words (a/A/I) — those
+# collide with articles/pronouns and would be too noisy to flag (the skill steers the planner
+# to spell variable 'a' as "ay"). Catch the rest as a reminder to spell the letter name.
+_LETTER_WORDS = {"a", "A", "I"}
 
 
 def normalize(plan: dict) -> dict:
@@ -137,6 +146,7 @@ def lint(plan: dict, assets_dir=None) -> list[str]:
     """Return non-fatal warnings (empty == clean). Catches things that render/synth
     fine but produce bad *output*: TTS-hostile symbols in narration (mangled audio)
     and, if `assets_dir` is given, `figure` srcs that don't exist on disk."""
+    import re
     from pathlib import Path
     warnings: list[str] = []
     scenes = plan.get("scenes") if isinstance(plan, dict) else None
@@ -155,6 +165,12 @@ def lint(plan: dict, assets_dir=None) -> list[str]:
             if "\\" in text or "$" in text:
                 warnings.append(f"{where}.narration looks like it contains raw LaTeX — "
                                 f"TTS reads it literally; write the spoken words instead")
+            lone = sorted({m for m in re.findall(r"(?<![A-Za-z'])([A-Za-z])(?![A-Za-z'])", text)
+                           if m not in _LETTER_WORDS})
+            if lone:
+                warnings.append(f"{where}.narration has lone letters {lone} — if these are math "
+                                f"variables, spell the letter name (q→'cue', x→'eks', k→'kay') so "
+                                f"TTS says the letter, not a sound")
         if assets_dir is not None and s.get("component") == "figure":
             src = (s.get("props") or {}).get("src")
             if src and not (Path(assets_dir) / src).exists():
