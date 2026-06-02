@@ -6,12 +6,52 @@ runs `npx remotion render`. The project is found relative to this package source
 """
 from __future__ import annotations
 import json
+import os
 import shutil
 import subprocess
 import time
 from pathlib import Path
 
 REMOTION_DIR = Path(__file__).resolve().parents[1] / "remotion"
+
+# Rough peak RAM per parallel headless-Chrome render worker. Remotion's own default
+# concurrency (~cores/2) is RAM-blind, so on a many-core / low-RAM box it thrashes or
+# gets OOM-killed; we cap by available memory too. Tune if renders still thrash.
+MEM_PER_WORKER_GB = 1.5
+
+
+def _available_gb() -> float | None:
+    """Best-effort available RAM in GB (None if undetectable). Linux MemAvailable first."""
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / (1024 * 1024)  # kB -> GB
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return (os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_AVPHYS_PAGES")) / (1024 ** 3)
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+def detect_resources() -> dict:
+    return {"cores": os.cpu_count() or 1, "available_gb": _available_gb()}
+
+
+def auto_concurrency(res: dict | None = None) -> tuple[int, str]:
+    """Pick a render concurrency that adapts to the machine: bounded by cores AND by
+    available RAM. Returns (concurrency, human-readable reason). Output is unaffected —
+    this only changes how fast/safely it renders."""
+    res = res or detect_resources()
+    cores = res["cores"]
+    gb = res["available_gb"]
+    by_cores = max(1, cores - 1)  # leave a core for the system
+    if gb is None:
+        return by_cores, f"{cores} cores, RAM unknown -> {by_cores}"
+    by_mem = max(1, int(gb // MEM_PER_WORKER_GB))
+    c = max(1, min(by_cores, by_mem))
+    return c, (f"{cores} cores, {gb:.1f} GB free -> "
+               f"min(cores-1={by_cores}, mem/{MEM_PER_WORKER_GB:g}GB={by_mem}) = {c}")
 
 
 def _clear_and_copy(src: Path, dst: Path) -> int:
@@ -51,8 +91,10 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
            f"--props={props_file}"]
     if not progress:
         cmd.append("--log=error")
-    if concurrency:
-        cmd.append(f"--concurrency={concurrency}")
+    if concurrency is None:
+        concurrency, why = auto_concurrency()
+        print(f"  auto-concurrency {concurrency} ({why})")
+    cmd.append(f"--concurrency={concurrency}")
 
     print(f"  staged {n_assets} assets, {n_audio} audio clips; rendering -> {out_mp4}")
     t0 = time.time()

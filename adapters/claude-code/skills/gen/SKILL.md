@@ -76,9 +76,9 @@ proceed.
 ```bash
 ~/.paperview/venv/bin/ppv render "$WORK/plan.json" --workdir "$WORK" --out "$WORK/explainer.mp4"
 ```
-On a 16 GB machine, pass `--concurrency 4` to avoid memory thrash. The render is quiet and can take
-several minutes — for a long one, add `--progress` and/or run it as a background task so you can poll
-rather than block.
+Render concurrency is **auto-detected** from cores + free RAM (no need to set `--concurrency` unless
+you want to override). The render is quiet and can take several minutes — for a long one, add
+`--progress` and/or run it as a background task so you can poll rather than block.
 
 ## 8. Report
 Give the user the **MP4 path** (`$WORK/explainer.mp4`), the **render time** printed by the CLI,

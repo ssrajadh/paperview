@@ -46,6 +46,15 @@ def cmd_doctor(args) -> int:
     from .render import REMOTION_DIR
     check("remotion deps", lambda: "installed" if (REMOTION_DIR / "node_modules" / "remotion").exists()
           else (_ for _ in ()).throw(RuntimeError(f"run setup; missing {REMOTION_DIR}/node_modules")))
+
+    def _hardware():
+        from .render import detect_resources, auto_concurrency
+        res = detect_resources()
+        c, why = auto_concurrency(res)
+        gb = f"{res['available_gb']:.1f} GB free" if res["available_gb"] is not None else "RAM unknown"
+        return f"{res['cores']} cores, {gb} -> render concurrency {c}"
+    check("hardware", _hardware)
+
     print("OK" if ok else "FAILED")
     return 0 if ok else 1
 
