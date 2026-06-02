@@ -1,0 +1,9 @@
+{
+  "name": "ppv",
+  "version": "0.1.0",
+  "description": "PaperView — turn a research paper PDF into a narrated, animated explainer video. Deterministic, local rendering (Supertonic TTS + Remotion).",
+  "author": { "name": "Soham" },
+  "homepage": "https://github.com/ssrajadh/paperview",
+  "repository": "https://github.com/ssrajadh/paperview",
+  "license": "MIT"
+}
