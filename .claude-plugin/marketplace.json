@@ -1,0 +1,11 @@
+{
+  "name": "paperview",
+  "owner": { "name": "Soham" },
+  "plugins": [
+    {
+      "name": "ppv",
+      "source": "./adapters/claude-code",
+      "description": "PaperView — turn a research paper PDF into a narrated, animated explainer video. Deterministic, local rendering (Supertonic TTS + Remotion)."
+    }
+  ]
+}
