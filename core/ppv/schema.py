@@ -60,7 +60,7 @@ ASPECTS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 
 # Supertonic voice presets. M# = male, F# = female; audition with `ppv tts --voice <id>`.
 VOICES = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
-DEFAULT_VOICE = "M2"
+DEFAULT_VOICE = "F2"
 
 # Characters TTS reads poorly (math/logic symbols) — narration should spell these out.
 _TTS_HOSTILE = set("¬≤≥⟹⟸⟺↔→←×÷≈≠≅≡√∞∑∏∫∂∇∈∉⊂⊆⊃⊇∪∩∧∨∀∃±∓·∘°µΩ⊗⊕")

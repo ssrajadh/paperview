@@ -17,7 +17,7 @@ your job is the script and the visual choices.
 From `$ARGUMENTS` extract: the **PDF path** (resolve `~`, relative paths; if missing or several
 PDFs are plausible, **ask — don't guess**), and any steering: **length** (→ target scene count:
 ~1 scene per 12–15s, default 10–12 scenes ≈ 3 min), **focus**, **aspect** (`16:9` default / `9:16`
-/ `1:1`), **voice** (Supertonic `M1–M5`/`F1–F5`, default `M2`). Briefly state your interpretation
+/ `1:1`), **voice** (Supertonic `M1–M5`/`F1–F5`, default `F2`). Briefly state your interpretation
 (*"paper = X.pdf · ~3 min · focus = … · 16:9 — generating now"*) before the long steps.
 
 ## 2. Set up a run directory
