@@ -109,7 +109,8 @@ def cmd_render(args) -> int:
     # the render workdir holds assets/ — check figure srcs against it too
     if (rc := _check(plan, assets_dir=str(Path(args.workdir).expanduser() / "assets"))) != 0:
         return rc
-    render(plan, args.workdir, args.out, concurrency=args.concurrency, progress=args.progress)
+    render(plan, args.workdir, args.out, concurrency=args.concurrency, progress=args.progress,
+           resolution=args.resolution, fps=args.fps, crf=args.crf, draft=args.draft)
     return 0
 
 
@@ -147,6 +148,13 @@ def main(argv=None) -> int:
 
     sr = sub.add_parser("render", help="render a scene plan to MP4")
     sr.add_argument("plan"); sr.add_argument("--workdir", required=True); sr.add_argument("--out", required=True)
+    sr.add_argument("--resolution", choices=list(schema.RESOLUTIONS), default=None,
+                    help=f"output size (default {schema.DEFAULT_RESOLUTION}); lower = much faster + smaller")
+    sr.add_argument("--fps", type=int, default=None, help=f"frame rate (default {schema.DEFAULT_FPS})")
+    sr.add_argument("--draft", action="store_true",
+                    help=f"fast iteration preset ({schema.DRAFT_RESOLUTION} @ {schema.DRAFT_FPS}fps)")
+    sr.add_argument("--crf", type=int, default=None,
+                    help="h264 quality/size knob (higher = smaller file; Remotion default ~18)")
     sr.add_argument("--concurrency", type=int, default=None)
     sr.add_argument("--progress", action="store_true", help="show Remotion render progress")
     sr.set_defaults(func=cmd_render)

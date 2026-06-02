@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, staticFile } from "remotion";
+import { AbsoluteFill, Audio, staticFile, useVideoConfig } from "remotion";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { REGISTRY } from "./components";
@@ -14,13 +14,14 @@ import { sceneVisualFrames, TRANSITION } from "./layout";
 export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
   const withAudio = plan?.meta?.audio !== false;
   const scenes: any[] = plan?.scenes ?? [];
+  const { fps } = useVideoConfig();
   return (
     <AbsoluteFill style={{ backgroundColor: "#0a0e1f" }}>
       <TransitionSeries>
         {scenes.flatMap((s: any, i: number) => {
           const Comp = REGISTRY[s.component] ?? REGISTRY["statement"];
           const seq = (
-            <TransitionSeries.Sequence key={`s${s.id}`} durationInFrames={sceneVisualFrames(s)}>
+            <TransitionSeries.Sequence key={`s${s.id}`} durationInFrames={sceneVisualFrames(s, fps)}>
               <Comp {...(s.props || {})} />
               {withAudio && <Audio src={staticFile(`audio/scene${s.id}.wav`)} />}
             </TransitionSeries.Sequence>

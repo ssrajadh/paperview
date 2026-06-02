@@ -38,20 +38,22 @@ def detect_resources() -> dict:
     return {"cores": os.cpu_count() or 1, "available_gb": _available_gb()}
 
 
-def auto_concurrency(res: dict | None = None) -> tuple[int, str]:
+def auto_concurrency(res: dict | None = None, mem_scale: float = 1.0) -> tuple[int, str]:
     """Pick a render concurrency that adapts to the machine: bounded by cores AND by
-    available RAM. Returns (concurrency, human-readable reason). Output is unaffected —
-    this only changes how fast/safely it renders."""
+    available RAM. `mem_scale` is the per-worker RAM multiplier for the output resolution
+    (lower res -> lighter workers -> more of them fit). Returns (concurrency, reason).
+    Output is unaffected — this only changes how fast/safely it renders."""
     res = res or detect_resources()
     cores = res["cores"]
     gb = res["available_gb"]
+    per_worker = MEM_PER_WORKER_GB * mem_scale
     by_cores = max(1, cores - 1)  # leave a core for the system
     if gb is None:
         return by_cores, f"{cores} cores, RAM unknown -> {by_cores}"
-    by_mem = max(1, int(gb // MEM_PER_WORKER_GB))
+    by_mem = max(1, int(gb // per_worker))
     c = max(1, min(by_cores, by_mem))
     return c, (f"{cores} cores, {gb:.1f} GB free -> "
-               f"min(cores-1={by_cores}, mem/{MEM_PER_WORKER_GB:g}GB={by_mem}) = {c}")
+               f"min(cores-1={by_cores}, mem/{per_worker:.2g}GB={by_mem}) = {c}")
 
 
 def _clear_and_copy(src: Path, dst: Path) -> int:
@@ -69,10 +71,25 @@ def _clear_and_copy(src: Path, dst: Path) -> int:
 
 
 def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = None,
-           progress: bool = False) -> dict:
+           progress: bool = False, resolution: str | None = None, fps: int | None = None,
+           crf: int | None = None, draft: bool = False) -> dict:
+    from . import schema
     work = Path(workdir)
     out_mp4 = str(Path(out_mp4).expanduser().resolve())
     public = REMOTION_DIR / "public"
+    meta = plan.get("meta", {})
+
+    # resolve output knobs (intent-driven, never hardware): explicit arg > --draft >
+    # meta > default. resolution -> Remotion --scale (composition stays 1080-logical, so
+    # component layout is unchanged); fps flows into the props so timing matches.
+    if draft:
+        resolution = resolution or schema.DRAFT_RESOLUTION
+        fps = fps or schema.DRAFT_FPS
+    resolution = resolution or meta.get("resolution") or schema.DEFAULT_RESOLUTION
+    fps = fps or meta.get("fps") or schema.DEFAULT_FPS
+    scale = schema.RESOLUTIONS[resolution]
+    bw, bh = schema.ASPECTS.get(meta.get("aspect", "16:9"), (1920, 1080))
+    out_w, out_h = round(bw * scale), round(bh * scale)
 
     n_assets = _clear_and_copy(work / "assets", public / "assets")
     n_audio = _clear_and_copy(work / "audio", public / "audio")
@@ -81,7 +98,8 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     # (nothing in the repo's src/ is touched — per-run data stays in the workdir)
     durmap = {d["id"]: d["duration"] for d in json.loads((work / "durations.json").read_text())}
     scenes = [{**s, "seconds": durmap.get(s["id"], 3)} for s in plan["scenes"]]
-    merged = {**plan, "meta": {**plan.get("meta", {}), "audio": True}, "scenes": scenes}
+    merged = {**plan, "meta": {**meta, "audio": True, "fps": fps, "resolution": resolution},
+              "scenes": scenes}
     props_file = work / "_props.json"
     props_file.write_text(json.dumps({"plan": merged}))
 
@@ -91,11 +109,17 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
            f"--props={props_file}"]
     if not progress:
         cmd.append("--log=error")
+    if scale != 1.0:
+        cmd.append(f"--scale={scale}")
+    if crf is not None:
+        cmd.append(f"--crf={crf}")
     if concurrency is None:
-        concurrency, why = auto_concurrency()
+        concurrency, why = auto_concurrency(mem_scale=scale * scale)
         print(f"  auto-concurrency {concurrency} ({why})")
     cmd.append(f"--concurrency={concurrency}")
 
+    crf_note = f", crf {crf}" if crf is not None else ""
+    print(f"  {resolution} {out_w}x{out_h} @ {fps}fps{crf_note}")
     print(f"  staged {n_assets} assets, {n_audio} audio clips; rendering -> {out_mp4}")
     t0 = time.time()
     subprocess.run(cmd, cwd=REMOTION_DIR, check=True)
@@ -103,4 +127,5 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
 
     size = Path(out_mp4).stat().st_size
     print(f"  rendered in {wall:.1f}s  ({size/1e6:.1f} MB)  -> {out_mp4}")
-    return {"out": out_mp4, "seconds": round(wall, 1), "bytes": size}
+    return {"out": out_mp4, "seconds": round(wall, 1), "bytes": size,
+            "resolution": resolution, "fps": fps}

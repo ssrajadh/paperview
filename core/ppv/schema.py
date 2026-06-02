@@ -62,6 +62,18 @@ ASPECTS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 VOICES = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
 DEFAULT_VOICE = "F2"
 
+# Output resolution presets -> Remotion render scale vs the 1080 base. Only scales that
+# are integer-exact for every aspect AND exact in binary float (avoids the 720.036 trap):
+# 0.6667 (true 720p) is NOT reachable via --scale from 1920x1080 — 810p is the stand-in.
+# Render cost falls faster than pixel count (the browser paints fewer pixels per frame).
+RESOLUTIONS = {"1080p": 1.0, "810p": 0.75, "540p": 0.5}
+DEFAULT_RESOLUTION = "1080p"
+DEFAULT_FPS = 30
+# `--draft`: fast, smaller, for iteration. Lower res + fps; a deliberate opt-in, NOT
+# hardware-driven (same plan must render identically everywhere — see notes D5/D12).
+DRAFT_RESOLUTION = "810p"
+DRAFT_FPS = 24
+
 # Characters TTS reads poorly (math/logic symbols) — narration should spell these out.
 _TTS_HOSTILE = set("¬≤≥⟹⟸⟺↔→←×÷≈≠≅≡√∞∑∏∫∂∇∈∉⊂⊆⊃⊇∪∩∧∨∀∃±∓·∘°µΩ⊗⊕")
 
@@ -94,6 +106,12 @@ def validate(plan: dict) -> list[str]:
     voice = meta.get("voice")
     if voice is not None and voice not in VOICES:
         errors.append(f"meta.voice '{voice}' not in {VOICES}")
+    res = meta.get("resolution")
+    if res is not None and res not in RESOLUTIONS:
+        errors.append(f"meta.resolution '{res}' not in {sorted(RESOLUTIONS)}")
+    fps = meta.get("fps")
+    if fps is not None and (not isinstance(fps, int) or fps <= 0):
+        errors.append(f"meta.fps '{fps}' must be a positive integer")
 
     for i, s in enumerate(scenes):
         where = f"scenes[{i}]"
@@ -160,6 +178,10 @@ def plan_schema() -> dict:
                     "aspect": {"enum": sorted(ASPECTS), "default": "16:9"},
                     "voice": {"enum": VOICES, "default": DEFAULT_VOICE,
                               "description": "Supertonic preset; --voice overrides meta.voice."},
+                    "resolution": {"enum": sorted(RESOLUTIONS), "default": DEFAULT_RESOLUTION,
+                                   "description": "Output size; --resolution/--draft override."},
+                    "fps": {"type": "integer", "default": DEFAULT_FPS,
+                            "description": "Frame rate; --fps/--draft override."},
                     "audio": {"type": "boolean", "default": True},
                 },
             },

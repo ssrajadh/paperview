@@ -20,8 +20,9 @@ export const RemotionRoot: React.FC = () => {
       calculateMetadata={({ props }) => {
         const plan: any = (props as any).plan ?? defaultPlan;
         const [width, height] = DIMS[plan?.meta?.aspect] ?? DIMS["16:9"];
-        const durationInFrames = totalFrames(plan.scenes ?? []);
-        return { durationInFrames, width, height, props };
+        const fps = plan?.meta?.fps ?? FPS;
+        const durationInFrames = totalFrames(plan.scenes ?? [], fps);
+        return { durationInFrames, width, height, fps, props };
       }}
     />
   );
