@@ -1,0 +1,57 @@
+# PaperView (`ppv`)
+
+Turn a research-paper PDF into a narrated, animated explainer video — using **deterministic
+rendering** (real typeset math + the paper's real figures, rendered with code), not generative
+video. Runs **locally**: local TTS (Supertonic), local render (Remotion). No API keys for the
+heavy lifting; the planning/composition is done by the coding agent you already use.
+
+> Status: **v1, in development.** Claude Code adapter only. See [`docs/PAPERVIEW_V1.md`](docs/PAPERVIEW_V1.md)
+> for the full design, rationale, and roadmap.
+
+## Layout
+
+```
+core/                  source-agnostic engine
+  ppv/                 Python package + `ppv` CLI (ingest, tts, render, setup)
+  remotion/            deterministic Remotion render project + component library
+adapters/
+  claude-code/         Claude Code plugin (name "ppv") → /ppv:setup, /ppv:gen
+docs/                  design doc
+examples/              sample scene plans / outputs
+```
+
+## How it works
+
+```
+PDF ──ppv parse──▶ text + figures ──[agent writes scene plan]──▶ scenes.json
+        ──ppv tts──▶ audio + durations ──ppv render──▶ explainer.mp4
+```
+
+The **agent** (Claude Code) parses your request, looks at the extracted figures, and authors a
+**scene plan** (narration + which visual component + props per scene). The **`ppv` CLI** does the
+deterministic parts: PDF parsing, TTS, and rendering the scene plan through a fixed library of
+animated React components.
+
+## Quickstart (local dev)
+
+```bash
+# 1. load the plugin from this repo (no install/marketplace needed)
+claude --plugin-dir ./adapters/claude-code
+
+# 2. one-time toolchain bootstrap
+/ppv:setup
+
+# 3. make a video
+/ppv:gen ~/Downloads/attention_is_all_you_need.pdf, 3 minutes, focus on attention
+```
+
+## CLI (what the agent drives)
+
+```bash
+ppv doctor                       # health-check the toolchain
+ppv parse  <pdf>  --out <dir>    # text per page + extracted figures
+ppv tts    <scenes.json> --out <dir>   # narration WAVs + durations.json
+ppv render <scenes.json> --workdir <dir> --out <mp4>
+```
+
+See `docs/PAPERVIEW_V1.md` for the scene-plan schema and component library.

@@ -1,0 +1,21 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# node / remotion
+node_modules/
+core/remotion/out/
+core/remotion/public/audio/
+core/remotion/public/assets/
+
+# runtime working dirs & outputs
+runs/
+*.mp4
+*.wav
+
+# os
+.DS_Store
