@@ -99,7 +99,7 @@ def cmd_tts(args) -> int:
     plan = _load(args.plan)
     if (rc := _check(plan)) != 0:
         return rc
-    synth(plan, args.out, voice=args.voice, steps=args.steps)
+    synth(plan, args.out, voice=args.voice, steps=args.steps, cache=not args.no_cache)
     return 0
 
 
@@ -145,6 +145,7 @@ def main(argv=None) -> int:
     st.add_argument("--voice", default=None)
     st.add_argument("--steps", type=int, default=None,
                     help=f"diffusion steps (default {schema.DEFAULT_TTS_STEPS}; lower=faster, higher=smoother)")
+    st.add_argument("--no-cache", action="store_true", help="bypass the per-scene narration cache")
     st.add_argument("--list-voices", action="store_true", help="list voice presets and exit")
     st.set_defaults(func=cmd_tts)
 
