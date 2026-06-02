@@ -70,13 +70,15 @@ exist. Fix anything it flags, then proceed.
 ```
 (`ppv tts --list-voices` lists the presets if the user asked for a specific voice.)
 
-## 6. (Optional but recommended) cheap visual check before the full render
-Render one still per scene to catch layout problems cheaply, e.g.:
+## 6. (Recommended) cheap visual check before the full render
+A full render takes minutes; a still takes seconds. Spot-check dense scenes (equations, long text,
+figures) for overflow/clipping first:
 ```bash
-cd ~/.paperview/venv/../.. 2>/dev/null  # not needed; stills are optional
+~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --scene 7   # one scene -> PNG
+~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --all       # every scene
 ```
-If you want stills, render a few frames with `npx remotion still` from `core/remotion`. Otherwise
-proceed.
+**Read the PNG(s)** with the Read tool and fix any clipped/overflowing scenes in the plan before
+rendering. (Stills need only the figures in `$WORK/assets`; no TTS required.)
 
 ## 7. Render
 ```bash

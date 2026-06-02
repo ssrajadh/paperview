@@ -6,11 +6,14 @@ runs `npx remotion render`. The project is found relative to this package source
 """
 from __future__ import annotations
 import json
+import math
 import os
 import shutil
 import subprocess
 import time
 from pathlib import Path
+
+TRANSITION = 12  # must match remotion/src/layout.ts
 
 REMOTION_DIR = Path(__file__).resolve().parents[1] / "remotion"
 
@@ -129,3 +132,65 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     print(f"  rendered in {wall:.1f}s  ({size/1e6:.1f} MB)  -> {out_mp4}")
     return {"out": out_mp4, "seconds": round(wall, 1), "bytes": size,
             "resolution": resolution, "fps": fps}
+
+
+def _scene_frames(seconds: float, fps: int) -> int:
+    return max(1, math.ceil((seconds if seconds is not None else 3) * fps))
+
+
+def _content_end_frame(scenes: list[dict], idx: int, fps: int) -> int:
+    """Frame where scene `idx` is fully revealed and shown alone. On the transitioned
+    timeline the tail overlap cancels exactly, so each scene starts at the cumulative
+    sceneFrames; we capture its last content frame (before the fade tail)."""
+    start = sum(_scene_frames(s.get("seconds"), fps) for s in scenes[:idx])
+    return start + _scene_frames(scenes[idx].get("seconds"), fps) - 1
+
+
+def preview(plan: dict, workdir: str, scene: int | None = None, out: str | None = None,
+            all_scenes: bool = False, resolution: str | None = None) -> list[str]:
+    """Render a single scene (or every scene) to a still PNG — a cheap layout check
+    before committing to a multi-minute video render. No TTS/audio needed."""
+    from . import schema
+    work = Path(workdir)
+    public = REMOTION_DIR / "public"
+    meta = plan.get("meta", {})
+    resolution = resolution or meta.get("resolution") or schema.DEFAULT_RESOLUTION
+    fps = meta.get("fps") or schema.DEFAULT_FPS
+    scale = schema.RESOLUTIONS[resolution]
+
+    _clear_and_copy(work / "assets", public / "assets")  # figures must be staged
+
+    # use measured durations if a `ppv tts` run exists, else a default so reveals settle
+    durfile = work / "durations.json"
+    durmap = {d["id"]: d["duration"] for d in json.loads(durfile.read_text())} if durfile.exists() else {}
+    scenes = [{**s, "seconds": durmap.get(s["id"], 5)} for s in plan["scenes"]]
+    merged = {**plan, "meta": {**meta, "audio": False, "fps": fps, "resolution": resolution},
+              "scenes": scenes}
+    props_file = work / "_preview_props.json"
+    props_file.write_text(json.dumps({"plan": merged}))
+
+    n = len(scenes)
+    if all_scenes:
+        out_dir = Path(out).expanduser() if out else (work / "preview")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        targets = [(i, out_dir / f"scene{scenes[i]['id']}.png") for i in range(n)]
+    else:
+        idx = (scene or 1) - 1
+        if not (0 <= idx < n):
+            raise SystemExit(f"--scene {scene} out of range (1..{n})")
+        targets = [(idx, Path(out).expanduser() if out else work / f"preview_scene{scenes[idx]['id']}.png")]
+
+    results = []
+    for idx, opng in targets:
+        frame = _content_end_frame(scenes, idx, fps)
+        opng.parent.mkdir(parents=True, exist_ok=True)
+        cmd = ["npx", "remotion", "still", "src/index.ts", "Paper", str(opng),
+               f"--props={props_file}", f"--frame={frame}", "--log=error"]
+        if scale != 1.0:
+            cmd.append(f"--scale={scale}")
+        subprocess.run(cmd, cwd=REMOTION_DIR, check=True)
+        sid = scenes[idx]["id"]
+        comp = scenes[idx].get("component", "?")
+        print(f"  scene {sid:>2} ({comp}, frame {frame}) -> {opng}")
+        results.append(str(opng))
+    return results

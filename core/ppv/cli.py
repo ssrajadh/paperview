@@ -5,6 +5,7 @@
   ppv validate <plan.json> [--assets D]   fast-fail plan check (no TTS/render cost)
   ppv tts    <plan.json> --out <dir>      narration WAVs + durations.json
   ppv tts    --list-voices                list Supertonic voice presets
+  ppv preview <plan.json> --workdir <dir> [--scene N | --all]   single-scene still
   ppv render <plan.json> --workdir <dir> --out <mp4> [--progress]
   ppv components                          per-component required/optional props
   ppv schema                              full plan JSON Schema (meta + scenes)
@@ -114,6 +115,16 @@ def cmd_render(args) -> int:
     return 0
 
 
+def cmd_preview(args) -> int:
+    from .render import preview
+    plan = _load(args.plan)
+    if (rc := _check(plan, assets_dir=str(Path(args.workdir).expanduser() / "assets"))) != 0:
+        return rc
+    preview(plan, args.workdir, scene=args.scene, out=args.out,
+            all_scenes=args.all_scenes, resolution=args.resolution)
+    return 0
+
+
 def cmd_components(args) -> int:
     print(schema.schema_doc())
     return 0
@@ -161,6 +172,14 @@ def main(argv=None) -> int:
     sr.add_argument("--concurrency", type=int, default=None)
     sr.add_argument("--progress", action="store_true", help="show Remotion render progress")
     sr.set_defaults(func=cmd_render)
+
+    pv = sub.add_parser("preview", help="render one scene (or all) to a still PNG — cheap layout check")
+    pv.add_argument("plan"); pv.add_argument("--workdir", required=True)
+    pv.add_argument("--scene", type=int, default=None, help="1-based scene index (default 1)")
+    pv.add_argument("--all", dest="all_scenes", action="store_true", help="one still per scene")
+    pv.add_argument("--out", default=None, help="output PNG (single) or directory (--all)")
+    pv.add_argument("--resolution", choices=list(schema.RESOLUTIONS), default=None)
+    pv.set_defaults(func=cmd_preview)
 
     sub.add_parser("components", help="per-component required/optional props").set_defaults(func=cmd_components)
     sub.add_parser("schema", help="full plan JSON Schema (meta + scenes)").set_defaults(func=cmd_schema)
