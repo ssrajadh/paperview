@@ -19,3 +19,6 @@ runs/
 
 # os
 .DS_Store
+
+# local-only planning notes (not published)
+notes/

@@ -5,8 +5,7 @@ rendering** (real typeset math + the paper's real figures, rendered with code), 
 video. Runs **locally**: local TTS (Supertonic), local render (Remotion). No API keys for the
 heavy lifting; the planning/composition is done by the coding agent you already use.
 
-> Status: **v1, in development.** Claude Code adapter only. See [`docs/PAPERVIEW_V1.md`](docs/PAPERVIEW_V1.md)
-> for the full design, rationale, and roadmap.
+> Status: **v1.** Claude Code adapter only.
 
 ## Layout
 
@@ -54,4 +53,4 @@ ppv tts    <scenes.json> --out <dir>   # narration WAVs + durations.json
 ppv render <scenes.json> --workdir <dir> --out <mp4>
 ```
 
-See `docs/PAPERVIEW_V1.md` for the scene-plan schema and component library.
+Run `ppv components` for the scene-plan schema and component library.
