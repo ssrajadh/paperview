@@ -74,8 +74,9 @@ DEFAULT_FPS = 30
 DRAFT_RESOLUTION = "810p"
 DRAFT_FPS = 24
 
-# Supertonic diffusion steps: higher = smoother/less robotic, ~linear cost (16 ≈ 2x of 8).
-# Still faster than realtime; TTS is a minority of the pipeline. Override with `ppv tts --steps`.
+# Supertonic diffusion steps. NOT monotonic — 16 was the empirical sweet spot (judged most
+# natural, beating both 8 and 32; higher over-smooths prosody). Don't naively raise this.
+# ~linear cost (16 ≈ 2x of 8) but TTS is a minority of the pipeline. Override: `ppv tts --steps`.
 DEFAULT_TTS_STEPS = 16
 
 # Characters TTS reads poorly (math/logic symbols) — narration should spell these out.
