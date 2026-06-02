@@ -14,8 +14,8 @@ your job is the script and the visual choices.
 `ppv` lives at `~/.paperview/venv/bin/ppv` (run `/ppv:setup` first if it's missing).
 
 ## 1. Parse the request, then echo it back
-From `$ARGUMENTS` extract: the **PDF path** (resolve `~`, relative paths; if missing or several
-PDFs are plausible, **ask — don't guess**), and any steering: **length** (→ target scene count:
+From `$ARGUMENTS` extract: the **source path** — a **PDF** or a **text/Markdown** file (resolve `~`,
+relative paths; if missing or ambiguous, **ask — don't guess**), and any steering: **length** (→ target scene count:
 ~1 scene per 12–15s, default 10–12 scenes ≈ 3 min), **focus**, **aspect** (`16:9` default / `9:16`
 / `1:1`), **voice** (Supertonic `M1–M5`/`F1–F5`, default `F2`). Briefly state your interpretation
 (*"paper = X.pdf · ~3 min · focus = … · 16:9 — generating now"*) before the long steps.
@@ -25,12 +25,15 @@ PDFs are plausible, **ask — don't guess**), and any steering: **length** (→ 
 WORK=~/.paperview/runs/$(date +%s); mkdir -p "$WORK"
 ```
 
-## 3. Parse the PDF
+## 3. Parse the source
 ```bash
-~/.paperview/venv/bin/ppv parse "<pdf>" --out "$WORK"
+~/.paperview/venv/bin/ppv parse "<source>" --out "$WORK"   # PDF, Markdown, or text
 ```
-Then **read `$WORK/parse.json`** (per-page text) and **view every figure** in `$WORK/assets/`
-with the Read tool — you must know what each `fig_*.png` actually depicts before you reference it.
+`ppv parse` handles each type natively — **for a Markdown/text source, never convert it to a PDF
+first** (lossy round-trip); `ppv parse` reads it directly. Then **read `$WORK/parse.json`** (the
+text) and **view every figure** in `$WORK/assets/` with the Read tool — you must know what each
+figure actually depicts before you reference it. (A text source with no images yields no figures —
+that's fine; lean on `equation`/`bullets`/`statement`/`comparison` instead.)
 
 ## 4. Author the scene plan → `$WORK/plan.json`
 Run `~/.paperview/venv/bin/ppv components` for the component list + props, and

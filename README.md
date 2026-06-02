@@ -48,7 +48,7 @@ claude --plugin-dir ./adapters/claude-code
 
 ```bash
 ppv doctor                       # health-check the toolchain
-ppv parse  <pdf>  --out <dir>    # text per page + extracted figures
+ppv parse  <pdf|md|txt> --out <dir>    # text + figures (PDF, Markdown, or text source)
 ppv validate <scenes.json> [--assets <dir>]   # fast-fail plan check (no TTS/render cost)
 ppv tts    <scenes.json> --out <dir>   # narration WAVs + durations.json
 ppv render <scenes.json> --workdir <dir> --out <mp4> [--resolution 810p|540p] [--draft] [--crf N] [--progress]

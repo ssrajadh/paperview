@@ -1,7 +1,7 @@
 """`ppv` CLI: the deterministic primitives the agent drives.
 
   ppv doctor                              health-check the toolchain
-  ppv parse  <pdf>  --out <dir>           text per page + extracted figures
+  ppv parse  <pdf|md|txt> --out <dir>     text + figures (PDF, Markdown, or text)
   ppv validate <plan.json> [--assets D]   fast-fail plan check (no TTS/render cost)
   ppv tts    <plan.json> --out <dir>      narration WAVs + durations.json
   ppv tts    --list-voices                list Supertonic voice presets
@@ -61,8 +61,8 @@ def cmd_doctor(args) -> int:
 
 
 def cmd_parse(args) -> int:
-    from .ingest import parse, summarize
-    manifest = parse(args.pdf, args.out)
+    from .ingest import parse_source, summarize
+    manifest = parse_source(args.source, args.out)
     print(summarize(manifest))
     return 0
 
@@ -142,8 +142,8 @@ def main(argv=None) -> int:
 
     sub.add_parser("doctor", help="health-check the toolchain").set_defaults(func=cmd_doctor)
 
-    sp = sub.add_parser("parse", help="extract text + figures from a PDF")
-    sp.add_argument("pdf"); sp.add_argument("--out", required=True)
+    sp = sub.add_parser("parse", help="extract text + figures from a PDF, Markdown, or text file")
+    sp.add_argument("source"); sp.add_argument("--out", required=True)
     sp.set_defaults(func=cmd_parse)
 
     sv = sub.add_parser("validate", help="fast-fail plan check (no TTS/render cost)")
