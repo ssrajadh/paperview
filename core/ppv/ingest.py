@@ -80,18 +80,27 @@ def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float
         kind = "table" if m.group(1).lower() == "table" else "figure"
         label = f"{'Table' if kind == 'table' else 'Figure'} {m.group(2)}"
         cx0, cy0, cx1, cy1 = b[:4]
-        ccx = (cx0 + cx1) / 2
+        ccx, ccy = (cx0 + cx1) / 2, (cy0 + cy1) / 2
         cands = [c for c in clusters if not (c[2] < cx0 - 5 or c[0] > cx1 + 5) or c[0] <= ccx <= c[2]]
-        above = [c for c in cands if c[3] <= cy0 + 5]
-        below = [c for c in cands if c[1] >= cy1 - 5]
-        grp = (above or below) if kind == "figure" else (below or above)
+        # a figure sits above its caption, a table below — judged by cluster *center* so the
+        # caption may overlap the figure's bottom edge (common when content runs to the caption)
+        side = [c for c in cands if ((c[1] + c[3]) / 2 <= ccy) == (kind == "figure")]
+        grp = side or cands
         if not grp:
             continue
-        pick = min(grp, key=lambda c: min(abs(cy0 - c[3]), abs(c[1] - cy1)))
-        if min(abs(cy0 - pick[3]), abs(pick[1] - cy1)) > pr.height * 0.4:  # too far -> wrong
+
+        def vgap(c: list[float]) -> float:  # 0 if the caption is within the cluster's y-span
+            return max(0.0, c[1] - ccy, ccy - c[3])
+        pick = min(grp, key=vgap)
+        if vgap(pick) > pr.height * 0.4:  # nearest cluster is implausibly far -> skip
             continue
-        clip = fitz.Rect(max(pr.x0, pick[0] - 4), max(pr.y0, pick[1] - 4),
-                         min(pr.x1, pick[2] + 4), min(pr.y1, pick[3] + 4))
+        # clip to the region but trim out the caption text itself (below for figs, above for tables)
+        x0, y0, x1, y1 = pick[0] - 4, pick[1] - 4, pick[2] + 4, pick[3] + 4
+        y1 = min(y1, cy0 - 2) if kind == "figure" else y1
+        y0 = max(y0, cy1 + 2) if kind == "table" else y0
+        clip = fitz.Rect(max(pr.x0, x0), max(pr.y0, y0), min(pr.x1, x1), min(pr.y1, y1))
+        if clip.width * zoom < min_fig_px or clip.height * zoom < min_fig_px:
+            continue
         pm = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip)
         fname = f"fig_p{page_no}_{kind}{m.group(2)}.png"
         pm.save(str(assets / fname))
@@ -100,23 +109,30 @@ def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float
     return figures
 
 
-def _embedded_figures(page, doc, page_no: int, assets: Path, min_fig_px: int) -> list[dict]:
-    """Fallback: extract embedded raster images (used on pages with no detected captions)."""
+def _embedded_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 2.0) -> list[dict]:
+    """Fallback for caption-less pages: clip-render *clustered* embedded-image regions, so a
+    diagram split into many small images becomes one figure rather than dozens of fragments."""
     import fitz
-    figures = []
+    rects = []
     for img in page.get_images(full=True):
-        xref = img[0]
         try:
-            pm = fitz.Pixmap(doc, xref)
-            if pm.width < min_fig_px or pm.height < min_fig_px:
-                continue
-            if pm.n - pm.alpha >= 4:  # CMYK -> RGB
-                pm = fitz.Pixmap(fitz.csRGB, pm)
-            fname = f"fig_p{page_no}_{xref}.png"
-            pm.save(str(assets / fname))
-            figures.append({"file": fname, "page": page_no, "kind": "image", "w": pm.width, "h": pm.height})
-        except Exception as e:  # noqa: BLE001
-            print(f"  ! page {page_no} image xref {xref} skipped: {e}")
+            rects += [[r.x0, r.y0, r.x1, r.y1] for r in page.get_image_rects(img[0])]
+        except Exception:  # noqa: BLE001
+            pass
+    rects = [r for r in rects if r[2] - r[0] > 1 and r[3] - r[1] > 1]
+    if not rects:
+        return []
+    pr = page.rect
+    figures = []
+    for i, c in enumerate(_cluster_rects(rects), 1):
+        if (c[2] - c[0]) * zoom < min_fig_px or (c[3] - c[1]) * zoom < min_fig_px:
+            continue
+        clip = fitz.Rect(max(pr.x0, c[0] - 4), max(pr.y0, c[1] - 4),
+                         min(pr.x1, c[2] + 4), min(pr.y1, c[3] + 4))
+        pm = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip)
+        fname = f"fig_p{page_no}_img{i}.png"
+        pm.save(str(assets / fname))
+        figures.append({"file": fname, "page": page_no, "kind": "image", "w": pm.width, "h": pm.height})
     return figures
 
 
@@ -135,8 +151,8 @@ def parse(pdf_path: str, out_dir: str, min_fig_px: int = 80) -> dict:
         text = page.get_text("text")
         pages.append({"page": page_no, "n_chars": len(text), "text": text})
         page_figs = _clip_figures(page, page_no, assets, min_fig_px)
-        if not page_figs:  # no captions found -> fall back to embedded raster
-            page_figs = _embedded_figures(page, doc, page_no, assets, min_fig_px)
+        if not page_figs:  # no captions matched -> clustered embedded-image fallback
+            page_figs = _embedded_figures(page, page_no, assets, min_fig_px)
         figures.extend(page_figs)
 
     manifest = {
