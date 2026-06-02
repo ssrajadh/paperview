@@ -1,24 +1,41 @@
 import React from "react";
-import { AbsoluteFill, Audio, Sequence, staticFile } from "remotion";
+import { AbsoluteFill, Audio, staticFile } from "remotion";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
 import { REGISTRY } from "./components";
-import { sceneFrames } from "./layout";
+import { sceneVisualFrames, TRANSITION } from "./layout";
 
 /** The whole video. `plan` arrives as input props (see Root calculateMetadata);
- *  per-scene narration durations are folded in as `scene.seconds` by `ppv render`. */
+ *  per-scene narration durations are folded in as `scene.seconds` by `ppv render`.
+ *  Scenes are chained with short cross-fades (no hard cuts). Each scene's visual
+ *  length is narration + TRANSITION tail, so the fade overlap lands on silence and
+ *  two scenes never narrate at once. Audio isn't opacity-faded, so narration stays
+ *  at full volume through the dissolve. */
 export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
   const withAudio = plan?.meta?.audio !== false;
-  let from = 0;
-  const seqs = (plan?.scenes ?? []).map((s: any) => {
-    const dur = sceneFrames(s);
-    const Comp = REGISTRY[s.component] ?? REGISTRY["statement"];
-    const el = (
-      <Sequence key={s.id} from={from} durationInFrames={dur} name={`s${s.id}-${s.component}`}>
-        <Comp {...(s.props || {})} />
-        {withAudio && <Audio src={staticFile(`audio/scene${s.id}.wav`)} />}
-      </Sequence>
-    );
-    from += dur;
-    return el;
-  });
-  return <AbsoluteFill style={{ backgroundColor: "#0a0e1f" }}>{seqs}</AbsoluteFill>;
+  const scenes: any[] = plan?.scenes ?? [];
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#0a0e1f" }}>
+      <TransitionSeries>
+        {scenes.flatMap((s: any, i: number) => {
+          const Comp = REGISTRY[s.component] ?? REGISTRY["statement"];
+          const seq = (
+            <TransitionSeries.Sequence key={`s${s.id}`} durationInFrames={sceneVisualFrames(s)}>
+              <Comp {...(s.props || {})} />
+              {withAudio && <Audio src={staticFile(`audio/scene${s.id}.wav`)} />}
+            </TransitionSeries.Sequence>
+          );
+          if (i === scenes.length - 1) return [seq];
+          return [
+            seq,
+            <TransitionSeries.Transition
+              key={`t${s.id}`}
+              presentation={fade()}
+              timing={linearTiming({ durationInFrames: TRANSITION })}
+            />,
+          ];
+        })}
+      </TransitionSeries>
+    </AbsoluteFill>
+  );
 };

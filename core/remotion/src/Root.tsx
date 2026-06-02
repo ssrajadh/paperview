@@ -1,7 +1,7 @@
 import React from "react";
 import { Composition } from "remotion";
 import { PaperVideo } from "./PaperVideo";
-import { FPS, DIMS, sceneFrames } from "./layout";
+import { FPS, DIMS, totalFrames } from "./layout";
 import defaultPlan from "./plan.default.json";
 
 /** The scene plan is passed as input props at render time (`ppv render` -> --props).
@@ -20,10 +20,7 @@ export const RemotionRoot: React.FC = () => {
       calculateMetadata={({ props }) => {
         const plan: any = (props as any).plan ?? defaultPlan;
         const [width, height] = DIMS[plan?.meta?.aspect] ?? DIMS["16:9"];
-        const durationInFrames = Math.max(
-          1,
-          (plan.scenes ?? []).reduce((a: number, s: any) => a + sceneFrames(s), 0)
-        );
+        const durationInFrames = totalFrames(plan.scenes ?? []);
         return { durationInFrames, width, height, props };
       }}
     />

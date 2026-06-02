@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@remotion/cli": "^4.0.469",
+    "@remotion/transitions": "^4.0.471",
     "katex": "^0.16.11",
     "react": "^19",
     "react-dom": "^19",
