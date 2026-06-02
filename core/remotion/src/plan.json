@@ -1,0 +1,17 @@
+{
+  "meta": { "title": "PaperView", "aspect": "16:9", "voice": "M2", "audio": false },
+  "scenes": [
+    {
+      "id": 1,
+      "narration": "PaperView render smoke test.",
+      "component": "title",
+      "props": { "title": "PaperView", "subtitle": "render smoke test" }
+    },
+    {
+      "id": 2,
+      "narration": "If you can read this the render pipeline works.",
+      "component": "statement",
+      "props": { "eyebrow": "smoke test", "text": "If you can read this, the render pipeline works." }
+    }
+  ]
+}

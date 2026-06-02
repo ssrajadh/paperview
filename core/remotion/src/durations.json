@@ -1,0 +1,4 @@
+[
+  { "id": 1, "file": "scene1.wav", "duration": 2.5 },
+  { "id": 2, "file": "scene2.wav", "duration": 2.0 }
+]

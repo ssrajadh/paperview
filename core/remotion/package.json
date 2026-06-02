@@ -1,0 +1,16 @@
+{
+  "name": "paperview-remotion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic render project + component library for PaperView.",
+  "scripts": {
+    "render": "remotion render"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.469",
+    "katex": "^0.16.11",
+    "react": "^19",
+    "react-dom": "^19",
+    "remotion": "^4.0.469"
+  }
+}
