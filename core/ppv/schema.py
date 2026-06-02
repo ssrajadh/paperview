@@ -58,9 +58,28 @@ COMPONENTS: dict[str, dict] = {
 
 ASPECTS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 
+# Supertonic voice presets. M# = male, F# = female; audition with `ppv tts --voice <id>`.
+VOICES = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
+DEFAULT_VOICE = "M2"
+
+# Characters TTS reads poorly (math/logic symbols) — narration should spell these out.
+_TTS_HOSTILE = set("¬≤≥⟹⟸⟺↔→←×÷≈≠≅≡√∞∑∏∫∂∇∈∉⊂⊆⊃⊇∪∩∧∨∀∃±∓·∘°µΩ⊗⊕")
+
+
+def normalize(plan: dict) -> dict:
+    """Fill in the fields ppv owns so the agent needn't. Currently: (re)assign each
+    scene's `id` by 1-based array order — agents can omit ids or use any value
+    (readable strings included); ppv renumbers them. Mutates and returns `plan`."""
+    if isinstance(plan, dict) and isinstance(plan.get("scenes"), list):
+        for i, s in enumerate(plan["scenes"], 1):
+            if isinstance(s, dict):
+                s["id"] = i
+    return plan
+
 
 def validate(plan: dict) -> list[str]:
-    """Return a list of human-readable errors (empty == valid)."""
+    """Return a list of human-readable errors (empty == valid). `id` is not checked
+    here — it's auto-assigned by `normalize()`."""
     errors: list[str] = []
     if not isinstance(plan, dict):
         return ["plan must be a JSON object"]
@@ -72,19 +91,14 @@ def validate(plan: dict) -> list[str]:
     aspect = meta.get("aspect", "16:9")
     if aspect not in ASPECTS:
         errors.append(f"meta.aspect '{aspect}' not in {sorted(ASPECTS)}")
+    voice = meta.get("voice")
+    if voice is not None and voice not in VOICES:
+        errors.append(f"meta.voice '{voice}' not in {VOICES}")
 
-    seen_ids = set()
     for i, s in enumerate(scenes):
         where = f"scenes[{i}]"
         if not isinstance(s, dict):
             errors.append(f"{where} must be an object"); continue
-        sid = s.get("id")
-        if not isinstance(sid, int):
-            errors.append(f"{where}.id must be an int")
-        elif sid in seen_ids:
-            errors.append(f"{where}.id {sid} is duplicated")
-        else:
-            seen_ids.add(sid)
         narration = s.get("narration")
         if not isinstance(narration, str) or not narration.strip():
             errors.append(f"{where}.narration must be a non-empty string")
@@ -99,6 +113,74 @@ def validate(plan: dict) -> list[str]:
             if req not in props:
                 errors.append(f"{where} (component '{comp}') missing required prop '{req}'")
     return errors
+
+
+def lint(plan: dict, assets_dir=None) -> list[str]:
+    """Return non-fatal warnings (empty == clean). Catches things that render/synth
+    fine but produce bad *output*: TTS-hostile symbols in narration (mangled audio)
+    and, if `assets_dir` is given, `figure` srcs that don't exist on disk."""
+    from pathlib import Path
+    warnings: list[str] = []
+    scenes = plan.get("scenes") if isinstance(plan, dict) else None
+    if not isinstance(scenes, list):
+        return warnings
+    for i, s in enumerate(scenes):
+        if not isinstance(s, dict):
+            continue
+        where = f"scenes[{i}]"
+        text = s.get("narration", "")
+        if isinstance(text, str):
+            bad = sorted({c for c in text if c in _TTS_HOSTILE})
+            if bad:
+                warnings.append(f"{where}.narration has TTS-hostile symbols {bad} — "
+                                f"spell them out (e.g. '≤' → 'less than or equal to')")
+            if "\\" in text or "$" in text:
+                warnings.append(f"{where}.narration looks like it contains raw LaTeX — "
+                                f"TTS reads it literally; write the spoken words instead")
+        if assets_dir is not None and s.get("component") == "figure":
+            src = (s.get("props") or {}).get("src")
+            if src and not (Path(assets_dir) / src).exists():
+                warnings.append(f"{where} figure src '{src}' not found in {assets_dir}")
+    return warnings
+
+
+def plan_schema() -> dict:
+    """Full JSON Schema for a scene plan (meta + scene envelope). Per-component
+    `props` are described by `ppv components`, referenced via $comment."""
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "PaperView scene plan",
+        "type": "object",
+        "required": ["scenes"],
+        "properties": {
+            "meta": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "aspect": {"enum": sorted(ASPECTS), "default": "16:9"},
+                    "voice": {"enum": VOICES, "default": DEFAULT_VOICE,
+                              "description": "Supertonic preset; --voice overrides meta.voice."},
+                    "audio": {"type": "boolean", "default": True},
+                },
+            },
+            "scenes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                    "type": "object",
+                    "required": ["narration", "component", "props"],
+                    "properties": {
+                        "id": {"type": "integer",
+                               "description": "Optional — auto-assigned by array order; agents may omit."},
+                        "narration": {"type": "string", "description": "Spoken verbatim by TTS (1-3 sentences)."},
+                        "component": {"enum": sorted(COMPONENTS)},
+                        "props": {"type": "object",
+                                  "$comment": "Required/optional props per component: run `ppv components`."},
+                    },
+                },
+            },
+        },
+    }
 
 
 def schema_doc() -> str:

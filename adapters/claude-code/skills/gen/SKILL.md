@@ -33,8 +33,11 @@ Then **read `$WORK/parse.json`** (per-page text) and **view every figure** in `$
 with the Read tool — you must know what each `fig_*.png` actually depicts before you reference it.
 
 ## 4. Author the scene plan → `$WORK/plan.json`
-Run `~/.paperview/venv/bin/ppv components` for the exact component list and props. Write a JSON
-object: `{ "meta": {title, aspect, voice}, "scenes": [ {id, narration, component, props}, … ] }`.
+Run `~/.paperview/venv/bin/ppv components` for the component list + props, and
+`~/.paperview/venv/bin/ppv schema` for the full plan contract (meta fields, valid `aspect`/`voice`).
+Write a JSON object: `{ "meta": {title, aspect, voice}, "scenes": [ {narration, component, props}, … ] }`.
+**`id` is optional — ppv auto-assigns it by order, so you can omit it** (or use readable names; they're
+renumbered).
 
 Guidance for a good plan:
 - **Narrative arc:** open with `title`; motivate the problem; explain the core idea/method; show
@@ -45,13 +48,21 @@ Guidance for a good plan:
 - **Visuals:** pick the component that best fits each beat — don't force a template. Use `figure`
   only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$`); use
   `comparison`/`stats`/`bullets` to keep it varied. Respect the user's focus and length.
-- Validate as you go: every scene needs `id`, `narration`, a valid `component`, and that
-  component's required props (the CLI will reject an invalid plan).
+- Each scene needs `narration`, a valid `component`, and that component's required props.
+
+## 4b. Validate the plan (cheap — do this before spending TTS/render time)
+```bash
+~/.paperview/venv/bin/ppv validate "$WORK/plan.json" --assets "$WORK/assets"
+```
+Fixes the slow failures up front: invalid components/props (errors, exit 2) and **warnings** for
+TTS-hostile symbols in narration (raw `≤ → √ ⟹` etc. — spell them out) and `figure` srcs that don't
+exist. Fix anything it flags, then proceed.
 
 ## 5. Synthesize narration
 ```bash
 ~/.paperview/venv/bin/ppv tts "$WORK/plan.json" --out "$WORK"
 ```
+(`ppv tts --list-voices` lists the presets if the user asked for a specific voice.)
 
 ## 6. (Optional but recommended) cheap visual check before the full render
 Render one still per scene to catch layout problems cheaply, e.g.:
@@ -65,7 +76,9 @@ proceed.
 ```bash
 ~/.paperview/venv/bin/ppv render "$WORK/plan.json" --workdir "$WORK" --out "$WORK/explainer.mp4"
 ```
-On a 16 GB machine, pass `--concurrency 4` to avoid memory thrash.
+On a 16 GB machine, pass `--concurrency 4` to avoid memory thrash. The render is quiet and can take
+several minutes — for a long one, add `--progress` and/or run it as a background task so you can poll
+rather than block.
 
 ## 8. Report
 Give the user the **MP4 path** (`$WORK/explainer.mp4`), the **render time** printed by the CLI,

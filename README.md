@@ -49,8 +49,10 @@ claude --plugin-dir ./adapters/claude-code
 ```bash
 ppv doctor                       # health-check the toolchain
 ppv parse  <pdf>  --out <dir>    # text per page + extracted figures
+ppv validate <scenes.json> [--assets <dir>]   # fast-fail plan check (no TTS/render cost)
 ppv tts    <scenes.json> --out <dir>   # narration WAVs + durations.json
-ppv render <scenes.json> --workdir <dir> --out <mp4>
+ppv render <scenes.json> --workdir <dir> --out <mp4> [--progress]
 ```
 
-Run `ppv components` for the scene-plan schema and component library.
+Run `ppv components` for the component library and `ppv schema` for the full plan JSON Schema
+(`ppv tts --list-voices` lists the narration voices).

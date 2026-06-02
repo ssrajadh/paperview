@@ -2,9 +2,12 @@
 
   ppv doctor                              health-check the toolchain
   ppv parse  <pdf>  --out <dir>           text per page + extracted figures
+  ppv validate <plan.json> [--assets D]   fast-fail plan check (no TTS/render cost)
   ppv tts    <plan.json> --out <dir>      narration WAVs + durations.json
-  ppv render <plan.json> --workdir <dir> --out <mp4>
-  ppv components                          print the scene-plan component reference
+  ppv tts    --list-voices                list Supertonic voice presets
+  ppv render <plan.json> --workdir <dir> --out <mp4> [--progress]
+  ppv components                          per-component required/optional props
+  ppv schema                              full plan JSON Schema (meta + scenes)
 """
 from __future__ import annotations
 import argparse
@@ -54,13 +57,39 @@ def cmd_parse(args) -> int:
     return 0
 
 
-def cmd_tts(args) -> int:
-    from .tts import synth
-    plan = _load(args.plan)
+def _check(plan: dict, assets_dir=None) -> int:
+    """Normalize, validate (fatal), then lint (warn). Return 0 if usable, 2 if invalid."""
+    schema.normalize(plan)
     errs = schema.validate(plan)
     if errs:
         print("invalid scene plan:\n  " + "\n  ".join(errs), file=sys.stderr)
         return 2
+    for w in schema.lint(plan, assets_dir=assets_dir):
+        print(f"  ⚠ {w}", file=sys.stderr)
+    return 0
+
+
+def cmd_validate(args) -> int:
+    plan = _load(args.plan)
+    rc = _check(plan, assets_dir=args.assets)
+    if rc == 0:
+        print("OK")
+    return rc
+
+
+def cmd_tts(args) -> int:
+    from .tts import synth
+    if args.list_voices:
+        print("Supertonic voices (default {}):".format(schema.DEFAULT_VOICE))
+        print("  " + "  ".join(schema.VOICES))
+        print("  M# = male, F# = female; audition with `ppv tts <plan> --voice <id>`.")
+        return 0
+    if not args.plan or not args.out:
+        print("tts: <plan> and --out are required (or use --list-voices)", file=sys.stderr)
+        return 2
+    plan = _load(args.plan)
+    if (rc := _check(plan)) != 0:
+        return rc
     synth(plan, args.out, voice=args.voice)
     return 0
 
@@ -68,16 +97,20 @@ def cmd_tts(args) -> int:
 def cmd_render(args) -> int:
     from .render import render
     plan = _load(args.plan)
-    errs = schema.validate(plan)
-    if errs:
-        print("invalid scene plan:\n  " + "\n  ".join(errs), file=sys.stderr)
-        return 2
-    render(plan, args.workdir, args.out, concurrency=args.concurrency)
+    # the render workdir holds assets/ — check figure srcs against it too
+    if (rc := _check(plan, assets_dir=str(Path(args.workdir).expanduser() / "assets"))) != 0:
+        return rc
+    render(plan, args.workdir, args.out, concurrency=args.concurrency, progress=args.progress)
     return 0
 
 
 def cmd_components(args) -> int:
     print(schema.schema_doc())
+    return 0
+
+
+def cmd_schema(args) -> int:
+    print(json.dumps(schema.plan_schema(), indent=2))
     return 0
 
 
@@ -92,16 +125,25 @@ def main(argv=None) -> int:
     sp.add_argument("pdf"); sp.add_argument("--out", required=True)
     sp.set_defaults(func=cmd_parse)
 
+    sv = sub.add_parser("validate", help="fast-fail plan check (no TTS/render cost)")
+    sv.add_argument("plan")
+    sv.add_argument("--assets", default=None, help="dir to check figure srcs against")
+    sv.set_defaults(func=cmd_validate)
+
     st = sub.add_parser("tts", help="synthesize narration for a scene plan")
-    st.add_argument("plan"); st.add_argument("--out", required=True); st.add_argument("--voice", default=None)
+    st.add_argument("plan", nargs="?"); st.add_argument("--out", default=None)
+    st.add_argument("--voice", default=None)
+    st.add_argument("--list-voices", action="store_true", help="list voice presets and exit")
     st.set_defaults(func=cmd_tts)
 
     sr = sub.add_parser("render", help="render a scene plan to MP4")
     sr.add_argument("plan"); sr.add_argument("--workdir", required=True); sr.add_argument("--out", required=True)
     sr.add_argument("--concurrency", type=int, default=None)
+    sr.add_argument("--progress", action="store_true", help="show Remotion render progress")
     sr.set_defaults(func=cmd_render)
 
-    sub.add_parser("components", help="print the scene-plan component reference").set_defaults(func=cmd_components)
+    sub.add_parser("components", help="per-component required/optional props").set_defaults(func=cmd_components)
+    sub.add_parser("schema", help="full plan JSON Schema (meta + scenes)").set_defaults(func=cmd_schema)
 
     args = p.parse_args(argv)
     return args.func(args)

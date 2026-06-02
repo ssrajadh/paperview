@@ -14,7 +14,8 @@ def synth(plan: dict, out_dir: str, voice: str | None = None, speed: float = 1.0
     audio = out / "audio"
     audio.mkdir(parents=True, exist_ok=True)
 
-    voice = voice or plan.get("meta", {}).get("voice") or "M2"
+    from .schema import DEFAULT_VOICE
+    voice = voice or plan.get("meta", {}).get("voice") or DEFAULT_VOICE
     tts = TTS()  # supertonic-3, auto-downloads on first run
     style = tts.get_voice_style(voice)
 
