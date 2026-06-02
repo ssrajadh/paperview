@@ -1,7 +1,9 @@
-"""Source ingest -> parse.json (per-"page" text + figures in assets/). PDFs go through
-PyMuPDF (embedded raster figures only; vector figures are future work — D2). Markdown/
-text/HTML are read directly (no PDF round-trip) and local image refs are copied into
-assets/. All sources emit the same manifest shape so the planner is source-agnostic."""
+"""Source ingest -> parse.json (per-"page" text + figures in assets/). PDF figures are
+captured by clip-rendering the region around each "Figure/Table N" caption, which grabs
+**vector** figures the embedded-image API misses (D2), and records the caption text too;
+falls back to embedded raster on pages with no detected captions. Markdown/text/HTML are
+read directly (no PDF round-trip). All sources emit the same manifest shape so the planner
+is source-agnostic."""
 from __future__ import annotations
 import json
 import re
@@ -10,12 +12,112 @@ from pathlib import Path
 
 TEXT_SUFFIXES = {".md", ".markdown", ".txt", ".text", ".rst", ".html", ".htm", ".tex"}
 
+# A caption block: "Figure 3:", "Fig. 3.", "Table 3 —". The trailing separator avoids
+# matching in-body reference sentences like "Table 2 summarizes our results".
+_CAP_RE = re.compile(r"^\s*(figure|fig\.?|table)\s+([0-9]+)\s*[:.–—]", re.IGNORECASE)
+
 
 def parse_source(src: str, out_dir: str) -> dict:
     """Dispatch on file type: PDF -> PyMuPDF; markdown/text/HTML -> read directly."""
     if Path(src).expanduser().suffix.lower() == ".pdf":
         return parse(src, out_dir)
     return parse_text(src, out_dir)
+
+
+def _cluster_rects(rects: list[list[float]], gap: float = 18.0) -> list[list[float]]:
+    """Merge rects whose bboxes are within `gap` into connected components. Drawn strokes +
+    embedded images of one figure cluster into its region; this is robust to text *inside*
+    the figure (axis labels, table cells) because we cluster the drawn content, not bound by
+    surrounding text."""
+    rects = [list(r) for r in rects]
+    changed = True
+    while changed:
+        changed = False
+        out: list[list[float]] = []
+        for r in rects:
+            for o in out:
+                if not (r[0] > o[2] + gap or r[2] < o[0] - gap or r[1] > o[3] + gap or r[3] < o[1] - gap):
+                    o[0], o[1] = min(o[0], r[0]), min(o[1], r[1])
+                    o[2], o[3] = max(o[2], r[2]), max(o[3], r[3])
+                    changed = True
+                    break
+            else:
+                out.append(r)
+        rects = out
+    return rects
+
+
+def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 2.0) -> list[dict]:
+    """Caption-anchored clip-render. Cluster the page's drawn content + images into figure
+    regions, assign each figure/table caption to the nearest region on the expected side
+    (above for figures, below for tables), and rasterize it — capturing vector figures (and
+    tables, via their rule lines) that the embedded-image API misses."""
+    import fitz
+
+    pr = page.rect
+    blocks = [b for b in page.get_text("blocks") if b[6] == 0 and b[4].strip()]
+    content = [list(d["rect"]) for d in page.get_drawings()]
+    for img in page.get_images(full=True):
+        try:
+            content += [[r.x0, r.y0, r.x1, r.y1] for r in page.get_image_rects(img[0])]
+        except Exception:  # noqa: BLE001
+            pass
+    content = [r for r in content if r[2] - r[0] > 1 and r[3] - r[1] > 1]
+    if not content or len(content) > 4000:  # nothing drawn, or pathological page -> fallback
+        return []
+
+    min_pt = min_fig_px / zoom
+    clusters = [c for c in _cluster_rects(content)
+                if c[2] - c[0] >= min_pt and c[3] - c[1] >= min_pt]
+    if not clusters:
+        return []
+
+    figures = []
+    for b in blocks:
+        m = _CAP_RE.match(b[4])
+        if not m:
+            continue
+        kind = "table" if m.group(1).lower() == "table" else "figure"
+        label = f"{'Table' if kind == 'table' else 'Figure'} {m.group(2)}"
+        cx0, cy0, cx1, cy1 = b[:4]
+        ccx = (cx0 + cx1) / 2
+        cands = [c for c in clusters if not (c[2] < cx0 - 5 or c[0] > cx1 + 5) or c[0] <= ccx <= c[2]]
+        above = [c for c in cands if c[3] <= cy0 + 5]
+        below = [c for c in cands if c[1] >= cy1 - 5]
+        grp = (above or below) if kind == "figure" else (below or above)
+        if not grp:
+            continue
+        pick = min(grp, key=lambda c: min(abs(cy0 - c[3]), abs(c[1] - cy1)))
+        if min(abs(cy0 - pick[3]), abs(pick[1] - cy1)) > pr.height * 0.4:  # too far -> wrong
+            continue
+        clip = fitz.Rect(max(pr.x0, pick[0] - 4), max(pr.y0, pick[1] - 4),
+                         min(pr.x1, pick[2] + 4), min(pr.y1, pick[3] + 4))
+        pm = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip)
+        fname = f"fig_p{page_no}_{kind}{m.group(2)}.png"
+        pm.save(str(assets / fname))
+        figures.append({"file": fname, "page": page_no, "label": label, "kind": kind,
+                        "caption": " ".join(b[4].split())[:300], "w": pm.width, "h": pm.height})
+    return figures
+
+
+def _embedded_figures(page, doc, page_no: int, assets: Path, min_fig_px: int) -> list[dict]:
+    """Fallback: extract embedded raster images (used on pages with no detected captions)."""
+    import fitz
+    figures = []
+    for img in page.get_images(full=True):
+        xref = img[0]
+        try:
+            pm = fitz.Pixmap(doc, xref)
+            if pm.width < min_fig_px or pm.height < min_fig_px:
+                continue
+            if pm.n - pm.alpha >= 4:  # CMYK -> RGB
+                pm = fitz.Pixmap(fitz.csRGB, pm)
+            fname = f"fig_p{page_no}_{xref}.png"
+            pm.save(str(assets / fname))
+            figures.append({"file": fname, "page": page_no, "kind": "image", "w": pm.width, "h": pm.height})
+        except Exception as e:  # noqa: BLE001
+            print(f"  ! page {page_no} image xref {xref} skipped: {e}")
+    return figures
 
 
 def parse(pdf_path: str, out_dir: str, min_fig_px: int = 80) -> dict:
@@ -32,19 +134,10 @@ def parse(pdf_path: str, out_dir: str, min_fig_px: int = 80) -> dict:
         page_no = i + 1
         text = page.get_text("text")
         pages.append({"page": page_no, "n_chars": len(text), "text": text})
-        for img in page.get_images(full=True):
-            xref = img[0]
-            try:
-                pm = fitz.Pixmap(doc, xref)
-                if pm.width < min_fig_px or pm.height < min_fig_px:
-                    continue
-                if pm.n - pm.alpha >= 4:  # CMYK -> RGB
-                    pm = fitz.Pixmap(fitz.csRGB, pm)
-                fname = f"fig_p{page_no}_{xref}.png"
-                pm.save(str(assets / fname))
-                figures.append({"file": fname, "page": page_no, "w": pm.width, "h": pm.height})
-            except Exception as e:  # noqa: BLE001 -- MVP: skip unextractable images
-                print(f"  ! page {page_no} image xref {xref} skipped: {e}")
+        page_figs = _clip_figures(page, page_no, assets, min_fig_px)
+        if not page_figs:  # no captions found -> fall back to embedded raster
+            page_figs = _embedded_figures(page, doc, page_no, assets, min_fig_px)
+        figures.extend(page_figs)
 
     manifest = {
         "pdf": pdf_path,
@@ -101,7 +194,13 @@ def summarize(manifest: dict) -> str:
     lines = [
         f"Parsed: {manifest.get('source') or manifest.get('pdf')}",
         f"  pages: {manifest['n_pages']} | total chars: {sum(p['n_chars'] for p in manifest['pages'])}",
-        f"  figures ({len(figs)}): " + (", ".join(f["file"] for f in figs) or "none"),
-        f"  assets dir: {manifest['assets_dir']}",
+        f"  figures ({len(figs)}):",
     ]
+    for f in figs:
+        cap = f.get("caption", "")
+        cap = f" — {cap[:80]}{'…' if len(cap) > 80 else ''}" if cap else ""
+        lines.append(f"    {f.get('label') or f['file']} [{f['file']}, p{f['page']}]{cap}")
+    if not figs:
+        lines.append("    none")
+    lines.append(f"  assets dir: {manifest['assets_dir']}")
     return "\n".join(lines)
