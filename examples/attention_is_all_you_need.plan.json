@@ -1,0 +1,112 @@
+{
+  "meta": { "title": "Attention Is All You Need", "aspect": "16:9", "voice": "M2" },
+  "scenes": [
+    {
+      "id": 1,
+      "narration": "What if you could build a state of the art translation model with no recurrence and no convolutions at all? In twenty seventeen, eight researchers at Google proposed exactly that.",
+      "component": "title",
+      "props": { "title": "Attention Is All You Need", "subtitle": "Vaswani et al. · Google · 2017" }
+    },
+    {
+      "id": 2,
+      "narration": "Before this, the best sequence models read a sentence one word at a time. That made them slow to train, because each step has to wait for the one before it.",
+      "component": "statement",
+      "props": { "eyebrow": "the problem", "text": "Recurrent models process a sentence one step at a time — inherently sequential." }
+    },
+    {
+      "id": 3,
+      "narration": "The Transformer throws recurrence away entirely, and relies on a single mechanism, attention, so every word can look directly at every other word, all at once, in parallel.",
+      "component": "statement",
+      "props": { "eyebrow": "the idea", "text": "Dispense with recurrence and convolution. Use attention alone." }
+    },
+    {
+      "id": 4,
+      "narration": "Here is the full architecture. On the left an encoder reads the input sentence; on the right a decoder generates the output. Both are built by stacking the same simple block six times.",
+      "component": "figure",
+      "props": { "src": "fig_p3_128.png", "label": "Figure 1", "caption": "The Transformer — an encoder (left) and decoder (right), each a stack of six identical layers." }
+    },
+    {
+      "id": 5,
+      "narration": "Each layer has two sub-layers: multi-head self-attention, then a small position-wise feed-forward network. Both are wrapped in a residual connection and layer normalization.",
+      "component": "bullets",
+      "props": {
+        "heading": "Inside one layer",
+        "items": [
+          "Multi-head self-attention, then a position-wise feed-forward network",
+          "Each sub-layer wrapped in a residual connection + layer normalization",
+          "Every sub-layer outputs vectors of dimension d_model = 512"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "narration": "So what is attention? Each word forms three vectors: a query, a key, and a value. The query is compared against every key to decide how much to listen to each value.",
+      "component": "statement",
+      "props": { "eyebrow": "query · key · value", "text": "A query asks a question; it is matched against every key to weight the values." }
+    },
+    {
+      "id": 7,
+      "narration": "Concretely, take the dot product of the query with every key, scale it down by the square root of the key dimension d sub k, apply a softmax, and use the result to average the values.",
+      "component": "equation",
+      "props": {
+        "heading": "Scaled Dot-Product Attention",
+        "tex": "\\mathrm{Attention}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^{\\top}}{\\sqrt{d_k}}\\right)V",
+        "caption": "dot product  →  scale by √d_k  →  softmax  →  weighted sum of values"
+      }
+    },
+    {
+      "id": 8,
+      "narration": "As a diagram, that is a matmul of queries and keys, a scaling, an optional mask, a softmax, and a final matmul with the values.",
+      "component": "figure",
+      "props": { "src": "fig_p4_182.png", "label": "Figure 2", "caption": "Scaled dot-product attention." }
+    },
+    {
+      "id": 9,
+      "narration": "Rather than doing this once, the Transformer runs attention eight times in parallel. Each head uses its own learned projections, and the heads are concatenated and projected back down.",
+      "component": "figure",
+      "props": { "src": "fig_p4_183.png", "label": "Figure 2", "caption": "Multi-head attention: h = 8 parallel heads, concatenated then projected." }
+    },
+    {
+      "id": 10,
+      "narration": "With no recurrence, the model has no built-in sense of word order. So the authors add positional encodings, fixed sine and cosine waves, directly to the input embeddings.",
+      "component": "equation",
+      "props": {
+        "heading": "Positional Encoding",
+        "tex": "PE_{(pos,\\,2i)}=\\sin\\!\\left(\\frac{pos}{10000^{\\,2i/d_{model}}}\\right)",
+        "caption": "fixed sinusoids of varying frequency, added to the input embeddings"
+      }
+    },
+    {
+      "id": 11,
+      "narration": "Why bother? Self-attention connects any two positions in a single step, shortening the path that gradients travel, and unlike recurrence it parallelizes across the whole sequence.",
+      "component": "comparison",
+      "props": {
+        "heading": "Why self-attention?",
+        "rowLabels": ["Max path length", "Sequential operations", "Parallelizable"],
+        "columns": [
+          { "title": "Self-Attention", "highlight": true, "values": ["O(1)", "O(1)", "Yes"] },
+          { "title": "Recurrent", "values": ["O(n)", "O(n)", "No"] }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "narration": "The payoff was dramatic: twenty eight point four BLEU on English to German, a new state of the art forty one point eight on English to French, trained in just three and a half days on eight GPUs.",
+      "component": "stats",
+      "props": {
+        "heading": "Results",
+        "items": [
+          { "value": "28.4", "label": "BLEU · EN→DE" },
+          { "value": "41.8", "label": "BLEU · EN→FR (SOTA)", "highlight": true },
+          { "value": "3.5d", "label": "train · 8 GPUs" }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "narration": "By showing that attention alone was enough, this paper became the foundation for nearly every large language model that followed.",
+      "component": "outro",
+      "props": { "text": "Attention is all you need.", "tags": ["BERT", "GPT", "T5", "ViT", "LLaMA"] }
+    }
+  ]
+}
