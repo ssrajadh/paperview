@@ -1,24 +1,31 @@
 import React from "react";
 import { Composition } from "remotion";
-import plan from "./plan.json";
-import { PaperVideo, FPS, totalFrames } from "./PaperVideo";
+import { PaperVideo } from "./PaperVideo";
+import { FPS, DIMS, sceneFrames } from "./layout";
+import defaultPlan from "./plan.default.json";
 
-const DIMS: Record<string, [number, number]> = {
-  "16:9": [1920, 1080],
-  "9:16": [1080, 1920],
-  "1:1": [1080, 1080],
-};
-
+/** The scene plan is passed as input props at render time (`ppv render` -> --props).
+ *  calculateMetadata derives dimensions + length from it; the committed default
+ *  plan keeps the project openable in `remotion studio` and renderable as a smoke test. */
 export const RemotionRoot: React.FC = () => {
-  const [width, height] = DIMS[(plan as any).meta?.aspect ?? "16:9"] ?? DIMS["16:9"];
   return (
     <Composition
       id="Paper"
       component={PaperVideo}
-      durationInFrames={Math.max(1, totalFrames)}
       fps={FPS}
-      width={width}
-      height={height}
+      width={1920}
+      height={1080}
+      durationInFrames={300}
+      defaultProps={{ plan: defaultPlan as any }}
+      calculateMetadata={({ props }) => {
+        const plan: any = (props as any).plan ?? defaultPlan;
+        const [width, height] = DIMS[plan?.meta?.aspect] ?? DIMS["16:9"];
+        const durationInFrames = Math.max(
+          1,
+          (plan.scenes ?? []).reduce((a: number, s: any) => a + sceneFrames(s), 0)
+        );
+        return { durationInFrames, width, height, props };
+      }}
     />
   );
 };

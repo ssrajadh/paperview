@@ -36,12 +36,16 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     n_assets = _clear_and_copy(work / "assets", public / "assets")
     n_audio = _clear_and_copy(work / "audio", public / "audio")
 
-    # write plan (force audio on for a real run) + durations into the project source
-    plan = {**plan, "meta": {**plan.get("meta", {}), "audio": True}}
-    (REMOTION_DIR / "src" / "plan.json").write_text(json.dumps(plan, indent=2))
-    shutil.copy2(work / "durations.json", REMOTION_DIR / "src" / "durations.json")
+    # fold measured narration durations into the plan, then pass it as input props
+    # (nothing in the repo's src/ is touched — per-run data stays in the workdir)
+    durmap = {d["id"]: d["duration"] for d in json.loads((work / "durations.json").read_text())}
+    scenes = [{**s, "seconds": durmap.get(s["id"], 3)} for s in plan["scenes"]]
+    merged = {**plan, "meta": {**plan.get("meta", {}), "audio": True}, "scenes": scenes}
+    props_file = work / "_props.json"
+    props_file.write_text(json.dumps({"plan": merged}))
 
-    cmd = ["npx", "remotion", "render", "src/index.ts", "Paper", out_mp4, "--log=error"]
+    cmd = ["npx", "remotion", "render", "src/index.ts", "Paper", out_mp4,
+           f"--props={props_file}", "--log=error"]
     if concurrency:
         cmd.append(f"--concurrency={concurrency}")
 

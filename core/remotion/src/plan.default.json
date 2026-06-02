@@ -3,12 +3,14 @@
   "scenes": [
     {
       "id": 1,
+      "seconds": 2.5,
       "narration": "PaperView render smoke test.",
       "component": "title",
       "props": { "title": "PaperView", "subtitle": "render smoke test" }
     },
     {
       "id": 2,
+      "seconds": 2.0,
       "narration": "If you can read this the render pipeline works.",
       "component": "statement",
       "props": { "eyebrow": "smoke test", "text": "If you can read this, the render pipeline works." }
