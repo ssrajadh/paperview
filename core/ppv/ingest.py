@@ -5,6 +5,7 @@ falls back to embedded raster on pages with no detected captions. Markdown/text/
 read directly (no PDF round-trip). All sources emit the same manifest shape so the planner
 is source-agnostic."""
 from __future__ import annotations
+import hashlib
 import json
 import re
 import shutil
@@ -12,16 +13,67 @@ from pathlib import Path
 
 TEXT_SUFFIXES = {".md", ".markdown", ".txt", ".text", ".rst", ".html", ".htm", ".tex"}
 
+# Parse cache (D7): re-parsing the same source is wasted work, so cache parse.json + the
+# extracted assets by source content. Bump INGEST_VERSION when extraction logic changes so
+# stale results are invalidated automatically.
+INGEST_VERSION = "2"
+CACHE_DIR = Path.home() / ".paperview" / "cache" / "parse"
+
+
+def _source_key(src: Path) -> str:
+    """Content-addressed key for a source file (ingest version + suffix + bytes)."""
+    h = hashlib.sha256(f"{INGEST_VERSION}|{src.suffix.lower()}|".encode())
+    with open(src, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()[:20]
+
+
+def _restore_parse(cdir: Path, out: Path) -> dict:
+    """Copy a cached parse (parse.json + assets/) into `out`, fixing the assets path."""
+    assets = out / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+    for p in (cdir / "assets").glob("*"):
+        if p.is_file():
+            shutil.copy2(p, assets / p.name)
+    manifest = json.loads((cdir / "parse.json").read_text())
+    manifest["assets_dir"] = str(assets)
+    (out / "parse.json").write_text(json.dumps(manifest, indent=2))
+    return manifest
+
+
+def _store_parse(out: Path, cdir: Path) -> None:
+    """Save a fresh parse (parse.json + assets/) into the cache dir."""
+    cassets = cdir / "assets"
+    cassets.mkdir(parents=True, exist_ok=True)
+    for p in (out / "assets").glob("*"):
+        if p.is_file():
+            shutil.copy2(p, cassets / p.name)
+    shutil.copy2(out / "parse.json", cdir / "parse.json")
+
 # A caption block: "Figure 3:", "Fig. 3.", "Table 3 —". The trailing separator avoids
 # matching in-body reference sentences like "Table 2 summarizes our results".
 _CAP_RE = re.compile(r"^\s*(figure|fig\.?|table)\s+([0-9]+)\s*[:.–—]", re.IGNORECASE)
 
 
-def parse_source(src: str, out_dir: str) -> dict:
-    """Dispatch on file type: PDF -> PyMuPDF; markdown/text/HTML -> read directly."""
-    if Path(src).expanduser().suffix.lower() == ".pdf":
-        return parse(src, out_dir)
-    return parse_text(src, out_dir)
+def parse_source(src: str, out_dir: str, cache: bool = True) -> dict:
+    """Dispatch on file type: PDF -> PyMuPDF; markdown/text/HTML -> read directly. Results
+    are content-addressed cached (D7) — re-parsing an unchanged source restores the cached
+    parse.json + assets instead of re-extracting. Bypass with cache=False."""
+    p = Path(src).expanduser()
+    out = Path(out_dir)
+    key = _source_key(p) if cache and p.is_file() else None
+    if key is not None and (CACHE_DIR / key / "parse.json").exists():
+        print("  [cache] parse hit — restoring extracted text + figures")
+        return _restore_parse(CACHE_DIR / key, out)
+
+    manifest = parse(src, out_dir) if p.suffix.lower() == ".pdf" else parse_text(src, out_dir)
+    if key is not None:
+        try:
+            _store_parse(out, CACHE_DIR / key)
+        except OSError:
+            pass  # caching is best-effort; never fail a parse over it
+    return manifest
 
 
 def _cluster_rects(rects: list[list[float]], gap: float = 18.0) -> list[list[float]]:

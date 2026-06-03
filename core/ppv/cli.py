@@ -7,6 +7,7 @@
   ppv tts    --list-voices                list Supertonic voice presets
   ppv preview <plan.json> --workdir <dir> [--scene N | --all]   single-scene still
   ppv render <plan.json> --workdir <dir> --out <mp4> [--progress]
+  ppv cache  [--prune [DAYS] | --clear]   inspect / prune the parse + TTS caches
   ppv components                          per-component required/optional props
   ppv schema                              full plan JSON Schema (meta + scenes)
 """
@@ -62,8 +63,28 @@ def cmd_doctor(args) -> int:
 
 def cmd_parse(args) -> int:
     from .ingest import parse_source, summarize
-    manifest = parse_source(args.source, args.out)
+    manifest = parse_source(args.source, args.out, cache=not args.no_cache)
     print(summarize(manifest))
+    return 0
+
+
+def cmd_cache(args) -> int:
+    from . import cache
+    if args.clear:
+        n, freed = cache.clear()
+        print(f"cleared {n} entries ({cache.fmt_bytes(freed)} freed)")
+        return 0
+    if args.prune is not None:
+        n, freed = cache.prune(args.prune)
+        print(f"pruned {n} entries older than {args.prune:g}d ({cache.fmt_bytes(freed)} freed)")
+        return 0
+    print("ppv cache:")
+    total = 0
+    for name, (count, size) in cache.usage().items():
+        total += size
+        print(f"  {name:6} {count:>4} entries  {cache.fmt_bytes(size):>10}")
+    print(f"  {'total':6} {'':>4}          {cache.fmt_bytes(total):>10}")
+    print(f"  ({cache.ROOT})")
     return 0
 
 
@@ -145,7 +166,14 @@ def main(argv=None) -> int:
 
     sp = sub.add_parser("parse", help="extract text + figures from a PDF, Markdown, or text file")
     sp.add_argument("source"); sp.add_argument("--out", required=True)
+    sp.add_argument("--no-cache", action="store_true", help="bypass the parse cache")
     sp.set_defaults(func=cmd_parse)
+
+    sc = sub.add_parser("cache", help="show / prune / clear the parse + TTS caches")
+    sc.add_argument("--prune", type=float, metavar="DAYS", nargs="?", const=30.0,
+                    help="delete cache entries older than DAYS (default 30)")
+    sc.add_argument("--clear", action="store_true", help="delete all cache entries")
+    sc.set_defaults(func=cmd_cache)
 
     sv = sub.add_parser("validate", help="fast-fail plan check (no TTS/render cost)")
     sv.add_argument("plan")

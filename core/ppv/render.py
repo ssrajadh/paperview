@@ -174,12 +174,46 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     wall = time.time() - t0
 
     size = Path(out_mp4).stat().st_size
+    result = {"out": out_mp4, "seconds": round(wall, 1), "bytes": size,
+              "resolution": resolution, "fps": fps}
+    _write_manifest(work, plan, merged["meta"], durmap, result, concurrency, crf)
+
     print(f"  rendered in {wall:.1f}s  ({size/1e6:.1f} MB)")
     print(f"  ▶ {_link(out_mp4)}   (click to play)")
     if open_after and _open_file(out_mp4):
         print("  opening in your default player…")
-    return {"out": out_mp4, "seconds": round(wall, 1), "bytes": size,
-            "resolution": resolution, "fps": fps}
+    return result
+
+
+def _write_manifest(work: Path, plan: dict, meta: dict, durmap: dict,
+                    result: dict, concurrency: int, crf: int | None) -> None:
+    """Write a per-run manifest.json (D7): a single record of what this run produced —
+    source, plan shape, voice/timing, and render settings/output — for reproducibility
+    and debugging. Best-effort; never fails the render."""
+    from datetime import datetime, timezone
+    from . import __version__
+    try:
+        source = None
+        pj = work / "parse.json"
+        if pj.exists():
+            pm = json.loads(pj.read_text())
+            source = pm.get("source") or pm.get("pdf")
+        narration_s = round(sum(durmap.values()), 1) if durmap else None
+        manifest = {
+            "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "ppv_version": __version__,
+            "source": source,
+            "title": meta.get("title"),
+            "aspect": meta.get("aspect", "16:9"),
+            "voice": meta.get("voice"),
+            "scenes": len(plan.get("scenes", [])),
+            "narration_seconds": narration_s,
+            "render": {**result, "concurrency": concurrency, "crf": crf},
+        }
+        (work / "manifest.json").write_text(json.dumps(manifest, indent=2))
+        print(f"  manifest -> {work / 'manifest.json'}")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _scene_frames(seconds: float, fps: int) -> int:
