@@ -82,6 +82,25 @@ def _open_file(path: str) -> bool:
         return False
 
 
+def _guard_scenes(scenes: list[dict], assets_dir: Path) -> tuple[list[dict], list[str]]:
+    """Graceful degradation (D6): rewrite any `figure` scene whose asset is missing into a
+    plain `statement` so a dropped/unextracted figure degrades to text instead of aborting
+    the whole render (a missing `<Img>` 404s headless Chrome). Returns (scenes, warnings).
+    Component-level render errors are caught separately by the JS SceneErrorBoundary."""
+    out, warns = [], []
+    for s in scenes:
+        if s.get("component") == "figure":
+            props = s.get("props") or {}
+            src = props.get("src")
+            if not src or not (assets_dir / src).exists():
+                text = props.get("caption") or props.get("label") or s.get("narration") or "(figure unavailable)"
+                warns.append(f"scene {s.get('id')}: figure '{src}' missing -> text fallback")
+                s = {**s, "component": "statement",
+                     "props": {"eyebrow": props.get("label") or "Figure", "text": text}}
+        out.append(s)
+    return out, warns
+
+
 def _clear_and_copy(src: Path, dst: Path) -> int:
     dst.mkdir(parents=True, exist_ok=True)
     for p in dst.iterdir():
@@ -124,6 +143,9 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     # (nothing in the repo's src/ is touched — per-run data stays in the workdir)
     durmap = {d["id"]: d["duration"] for d in json.loads((work / "durations.json").read_text())}
     scenes = [{**s, "seconds": durmap.get(s["id"], 3)} for s in plan["scenes"]]
+    scenes, warns = _guard_scenes(scenes, work / "assets")
+    for w in warns:
+        print(f"  ⚠ {w}")
     merged = {**plan, "meta": {**meta, "audio": True, "fps": fps, "resolution": resolution},
               "scenes": scenes}
     props_file = work / "_props.json"
@@ -190,6 +212,9 @@ def preview(plan: dict, workdir: str, scene: int | None = None, out: str | None 
     durfile = work / "durations.json"
     durmap = {d["id"]: d["duration"] for d in json.loads(durfile.read_text())} if durfile.exists() else {}
     scenes = [{**s, "seconds": durmap.get(s["id"], 5)} for s in plan["scenes"]]
+    scenes, warns = _guard_scenes(scenes, work / "assets")
+    for w in warns:
+        print(f"  ⚠ {w}")
     merged = {**plan, "meta": {**meta, "audio": False, "fps": fps, "resolution": resolution},
               "scenes": scenes}
     props_file = work / "_preview_props.json"

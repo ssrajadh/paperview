@@ -3,6 +3,7 @@ import { AbsoluteFill, Audio, staticFile, useVideoConfig } from "remotion";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { REGISTRY } from "./components";
+import { SceneErrorBoundary } from "./components/SceneErrorBoundary";
 import { sceneVisualFrames, TRANSITION } from "./layout";
 
 /** The whole video. `plan` arrives as input props (see Root calculateMetadata);
@@ -22,7 +23,9 @@ export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
           const Comp = REGISTRY[s.component] ?? REGISTRY["statement"];
           const seq = (
             <TransitionSeries.Sequence key={`s${s.id}`} durationInFrames={sceneVisualFrames(s, fps)}>
-              <Comp {...(s.props || {})} />
+              <SceneErrorBoundary fallbackText={s.narration}>
+                <Comp {...(s.props || {})} />
+              </SceneErrorBoundary>
               {withAudio && <Audio src={staticFile(`audio/scene${s.id}.wav`)} />}
             </TransitionSeries.Sequence>
           );
