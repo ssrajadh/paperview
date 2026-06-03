@@ -47,7 +47,15 @@ Guidance for a good plan:
   the architecture/key `figure`(s) by filename; typeset the key `equation`(s) in real LaTeX;
   cover results with `stats`; close with `outro`.
 - **Narration** is spoken verbatim: 1–3 plain sentences per scene, **grounded in the paper's text**
-  (no invented numbers/claims). **Write for TTS** — it reads text literally and has no math sense:
+  (no invented numbers/claims).
+- **Don't overstate — calibrate claims to what the paper actually shows.** This is the #1 faithfulness
+  slip on unfamiliar papers (validated by external judges): the model nudges claims slightly too
+  strong. Avoid unearned superlatives — don't say **"state of the art"** unless the paper does;
+  attribute comparative results to the **specific baselines/benchmarks evaluated** ("outperforms the
+  prior methods on TriGap and UCIT", not "the best, period"). Don't assert a result is "proven" or
+  "largest/exactly" beyond the evidence. Prefer the paper's own hedging. When unsure, state the
+  narrower, supportable version.
+- **Write for TTS** — it reads text literally and has no math sense:
   - Spell out symbols/operators: "d sub k", "square root", "less than or equal to".
   - **Spell single-letter variables as their letter name**, or TTS voices them as a sound, not a
     letter (e.g. matrix "a" → says "uh", not "ay"). Use: a→"ay", e→"ee", i→"eye", o→"oh", q→"cue",
