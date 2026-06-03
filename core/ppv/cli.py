@@ -111,7 +111,8 @@ def cmd_render(args) -> int:
     if (rc := _check(plan, assets_dir=str(Path(args.workdir).expanduser() / "assets"))) != 0:
         return rc
     render(plan, args.workdir, args.out, concurrency=args.concurrency, progress=args.progress,
-           resolution=args.resolution, fps=args.fps, crf=args.crf, draft=args.draft)
+           resolution=args.resolution, fps=args.fps, crf=args.crf, draft=args.draft,
+           open_after=args.open)
     return 0
 
 
@@ -171,6 +172,7 @@ def main(argv=None) -> int:
                     help="h264 quality/size knob (higher = smaller file; Remotion default ~18)")
     sr.add_argument("--concurrency", type=int, default=None)
     sr.add_argument("--progress", action="store_true", help="show Remotion render progress")
+    sr.add_argument("--open", action="store_true", help="auto-open the MP4 when done (opt-in; default is a click-to-play link)")
     sr.set_defaults(func=cmd_render)
 
     pv = sub.add_parser("preview", help="render one scene (or all) to a still PNG — cheap layout check")

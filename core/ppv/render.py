@@ -59,6 +59,29 @@ def auto_concurrency(res: dict | None = None, mem_scale: float = 1.0) -> tuple[i
                f"min(cores-1={by_cores}, mem/{per_worker:.2g}GB={by_mem}) = {c}")
 
 
+def _link(path: str, label: str | None = None) -> str:
+    """Render an absolute path as an OSC 8 terminal hyperlink (file://). Clicking it in a
+    supporting terminal (GNOME Terminal, iTerm2, kitty, VS Code…) opens it with the OS
+    default handler — i.e. plays the video — with no intrusive auto-open. Plain path is
+    still shown for terminals that ignore the escape."""
+    from urllib.request import pathname2url
+    uri = "file://" + pathname2url(str(path))
+    return f"\033]8;;{uri}\033\\{label or path}\033]8;;\033\\"
+
+
+def _open_file(path: str) -> bool:
+    """Opt-in (`--open`) best-effort OS opener; non-blocking, never raises."""
+    import sys
+    try:
+        cmd = (["open", path] if sys.platform == "darwin"
+               else ["cmd", "/c", "start", "", path] if sys.platform.startswith("win")
+               else ["xdg-open", path])
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _clear_and_copy(src: Path, dst: Path) -> int:
     dst.mkdir(parents=True, exist_ok=True)
     for p in dst.iterdir():
@@ -75,7 +98,7 @@ def _clear_and_copy(src: Path, dst: Path) -> int:
 
 def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = None,
            progress: bool = False, resolution: str | None = None, fps: int | None = None,
-           crf: int | None = None, draft: bool = False) -> dict:
+           crf: int | None = None, draft: bool = False, open_after: bool = False) -> dict:
     from . import schema
     work = Path(workdir)
     out_mp4 = str(Path(out_mp4).expanduser().resolve())
@@ -129,7 +152,10 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     wall = time.time() - t0
 
     size = Path(out_mp4).stat().st_size
-    print(f"  rendered in {wall:.1f}s  ({size/1e6:.1f} MB)  -> {out_mp4}")
+    print(f"  rendered in {wall:.1f}s  ({size/1e6:.1f} MB)")
+    print(f"  ▶ {_link(out_mp4)}   (click to play)")
+    if open_after and _open_file(out_mp4):
+        print("  opening in your default player…")
     return {"out": out_mp4, "seconds": round(wall, 1), "bytes": size,
             "resolution": resolution, "fps": fps}
 

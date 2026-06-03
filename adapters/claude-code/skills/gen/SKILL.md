@@ -103,6 +103,9 @@ minutes** — tell the user the resolution/time tradeoff up front and prefer `--
 from cores + free RAM. The render is quiet — add `--progress` and/or background it for long jobs.
 
 ## 8. Report
-Give the user the **MP4 path** (`$WORK/explainer.mp4`), the **render time** printed by the CLI,
-the scene count, and a one-line honest note on where it might be weak (e.g. figures that couldn't
-be extracted). Offer to tweak the plan and re-render.
+Give the user the result as a **clickable link** so they don't have to hunt the filesystem —
+present the MP4 as a markdown link, e.g. `[▶ play explainer.mp4](file:///home/.../explainer.mp4)`
+(absolute `file://` path). `ppv render` also prints the path as a clickable terminal hyperlink.
+**Don't auto-open it** (a player stealing focus minutes later is disruptive) — let the user click
+when ready. Also report the **render time**, scene count, and a one-line honest note on where it
+might be weak (e.g. figures that couldn't be extracted). Offer to tweak the plan and re-render.
