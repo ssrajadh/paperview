@@ -47,6 +47,42 @@ def _cluster_rects(rects: list[list[float]], gap: float = 18.0) -> list[list[flo
     return rects
 
 
+def _table_region_from_text(blocks: list, cap, pr, max_gap: float = 26.0) -> list[float] | None:
+    """Reconstruct a table's bbox from the text rows below its caption, for borderless /
+    low-rule tables that leave little drawn content to cluster. Grows downward from the
+    caption through tightly-spaced rows, stopping at a large vertical gap or the next
+    caption. Returns [x0,y0,x1,y1] or None if nothing tabular sits below the caption."""
+    cy_mid = (cap[1] + cap[3]) / 2
+    below = sorted((b for b in blocks if (b[1] + b[3]) / 2 > cy_mid and b is not cap),
+                   key=lambda b: b[1])
+    region: list[float] | None = None
+    prev_bottom = cap[3]
+    for b in below:
+        x0, y0, x1, y1 = b[:4]
+        if _CAP_RE.match(b[4]):  # next figure/table caption -> table has ended
+            break
+        # table rows are single-line cells; a tall, wordy block is body prose, which in a
+        # two-column layout flows right under the table — stop before absorbing it.
+        prose = (y1 - y0) > 48 or len(b[4].split()) > 28
+        if region is not None:
+            if y0 - prev_bottom > max_gap or prose:  # big gap or prose -> table has ended
+                break
+            if x0 > region[2] + 40 or x1 < region[0] - 40:  # a side column of prose, not a row
+                continue
+            region = [min(region[0], x0), min(region[1], y0),
+                      max(region[2], x1), max(region[3], y1)]
+        else:
+            if y0 - cap[3] > max_gap * 2:  # first block far below the caption -> no table here
+                break
+            # accept the first adjacent block as the table body even if tall/wordy — PyMuPDF
+            # often returns a whole table as one block; the prose stop above bounds the rest.
+            region = [x0, y0, x1, y1]
+        prev_bottom = y1
+        if region[3] - region[1] > pr.height * 0.6:  # runaway -> stop growing
+            break
+    return region
+
+
 def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 2.0) -> list[dict]:
     """Caption-anchored clip-render. Cluster the page's drawn content + images into figure
     regions, assign each figure/table caption to the nearest region on the expected side
@@ -63,14 +99,14 @@ def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float
         except Exception:  # noqa: BLE001
             pass
     content = [r for r in content if r[2] - r[0] > 1 and r[3] - r[1] > 1]
-    if not content or len(content) > 4000:  # nothing drawn, or pathological page -> fallback
+    if len(content) > 4000:  # pathological page (vector soup) -> let the fallback handle it
         return []
 
     min_pt = min_fig_px / zoom
+    # an empty cluster list is fine: a borderless table leaves no drawn content but its
+    # region can still be reconstructed from the text rows below the caption (below).
     clusters = [c for c in _cluster_rects(content)
                 if c[2] - c[0] >= min_pt and c[3] - c[1] >= min_pt]
-    if not clusters:
-        return []
 
     figures = []
     for b in blocks:
@@ -81,18 +117,22 @@ def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float
         label = f"{'Table' if kind == 'table' else 'Figure'} {m.group(2)}"
         cx0, cy0, cx1, cy1 = b[:4]
         ccx, ccy = (cx0 + cx1) / 2, (cy0 + cy1) / 2
+
+        def vgap(c) -> float:  # 0 if the caption is within the region's y-span
+            return max(0.0, c[1] - ccy, ccy - c[3])
+
         cands = [c for c in clusters if not (c[2] < cx0 - 5 or c[0] > cx1 + 5) or c[0] <= ccx <= c[2]]
-        # a figure sits above its caption, a table below — judged by cluster *center* so the
+        # a figure sits above its caption, a table below — judged by region *center* so the
         # caption may overlap the figure's bottom edge (common when content runs to the caption)
         side = [c for c in cands if ((c[1] + c[3]) / 2 <= ccy) == (kind == "figure")]
         grp = side or cands
-        if not grp:
-            continue
-
-        def vgap(c: list[float]) -> float:  # 0 if the caption is within the cluster's y-span
-            return max(0.0, c[1] - ccy, ccy - c[3])
-        pick = min(grp, key=vgap)
-        if vgap(pick) > pr.height * 0.4:  # nearest cluster is implausibly far -> skip
+        pick = min(grp, key=vgap) if grp else None
+        # tables: if no drawn cluster fits (borderless), reconstruct the region from text rows
+        if kind == "table" and (pick is None or vgap(pick) > pr.height * 0.25):
+            tr = _table_region_from_text(blocks, b, pr)
+            if tr is not None:
+                pick = tr
+        if pick is None or vgap(pick) > pr.height * 0.4:  # nothing plausible -> skip
             continue
         # clip to the region but trim out the caption text itself (below for figs, above for tables)
         x0, y0, x1, y1 = pick[0] - 4, pick[1] - 4, pick[2] + 4, pick[3] + 4
