@@ -61,7 +61,16 @@ PDF/figures instead — and prefer fewer, high-confidence equations over guessed
 ## 4. Author the scene plan → `$WORK/plan.json`
 Run `~/.paperview/venv/bin/ppv components` for the component list + props, and
 `~/.paperview/venv/bin/ppv schema` for the full plan contract (meta fields, valid `aspect`/`voice`).
-Write a JSON object: `{ "meta": {title, aspect, voice}, "scenes": [ {narration, component, props}, … ] }`.
+Write a JSON object: `{ "meta": {title, aspect, voice, theme}, "scenes": [ {narration, component, props}, … ] }`.
+
+**Always set `meta.theme`** — don't leave it to the default. You've read the paper, so pick the
+backdrop that fits its field and tone (this is the auto-selection; the user shouldn't have to ask):
+- `midnight` (deep navy/blue) — default mood; core ML, theory, NLP, general CS.
+- `slate` (cool neutral gray-blue) — systems, infrastructure, security, networking, databases, hardware.
+- `dusk` (warm plum→amber) — vision, graphics, generative media, HCI, biology, or anything where a
+  softer/editorial feel suits the subject.
+Pick the closest fit; when genuinely unsure, use `midnight`. A user-specified look (or `--theme`)
+always wins.
 **`id` is optional — ppv auto-assigns it by order, so you can omit it** (or use readable names; they're
 renumbered).
 
@@ -125,10 +134,10 @@ for previews and re-render at 1080p only for the final. **A full-length 1080p re
 minutes** — tell the user the resolution/time tradeoff up front and prefer `--draft` while iterating.
 `--crf N` (higher = smaller file) trims size without dropping resolution. `--captions` burns the
 narration in as subtitles (default off; use it when the user asks for captions/subtitles or an
-accessible cut). `--theme midnight|slate|dusk` picks the backdrop palette (default `midnight` navy;
-`slate` = cool/neutral, `dusk` = warm — only the ambient background changes, content stays legible);
-honor a look the user asks for, else leave the default. Concurrency is auto-detected from cores +
-free RAM. The render is quiet — add `--progress` and/or background it for long jobs.
+accessible cut). The backdrop palette normally comes from `meta.theme` (you set it in §4); `--theme midnight|slate|dusk`
+is only an override for when the user explicitly asks for a different look mid-render. Concurrency is
+auto-detected from cores + free RAM. The render is quiet — add `--progress` and/or background it for
+long jobs.
 
 ## 8. Report
 Give the user the result as a **clickable link** so they don't have to hunt the filesystem —
