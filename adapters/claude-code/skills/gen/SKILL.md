@@ -15,10 +15,20 @@ your job is the script and the visual choices.
 
 ## 1. Parse the request, then echo it back
 From `$ARGUMENTS` extract: the **source path** — a **PDF** or a **text/Markdown** file (resolve `~`,
-relative paths; if missing or ambiguous, **ask — don't guess**), and any steering: **length** (→ target scene count:
-~1 scene per 12–15s, default 10–12 scenes ≈ 3 min), **focus**, **aspect** (`16:9` default / `9:16`
-/ `1:1`), **voice** (Supertonic `M1–M5`/`F1–F5`, default `F2`). Briefly state your interpretation
-(*"paper = X.pdf · ~3 min · focus = … · 16:9 — generating now"*) before the long steps.
+relative paths; if missing or ambiguous, **ask — don't guess**), and any steering:
+- **length / duration** — a target time (e.g. *"2 minutes"*, *"~5 min"*) → target scene count at
+  ~1 scene per 12–15s (default 10–12 scenes ≈ 3 min) **and** a per-scene narration word budget
+  (~2.5 words/sec, so a 14s scene ≈ 35 words). Size narration to hit the target; TTS finalizes it.
+- **depth / audience** — *intro / general* vs *expert*, *intuition-heavy* vs *math-heavy*. This sets
+  the narration register and the component mix: a general-audience cut leans on `statement`/`bullets`/
+  `figure` and explains terms; an expert cut spends more on `equation`/`comparison` and assumes
+  vocabulary. Keep claims calibrated either way (§4).
+- **focus** — a sub-topic to emphasize (spend more scenes there, trim the rest).
+- **aspect** (`16:9` default / `9:16` / `1:1`), **voice** (Supertonic `M1–M5`/`F1–F5`, default `F2`),
+  **captions** (on/off — burned-in subtitles, default off; set `meta.captions` or pass `--captions`).
+
+Briefly state your interpretation (*"paper = X.pdf · ~2 min (8 scenes) · expert · 16:9 — generating
+now"*) before the long steps.
 
 ## 2. Set up a run directory
 ```bash
@@ -99,8 +109,10 @@ Defaults to **1080p @ 30fps**. Resolution is the big speed/size lever — `--res
 renders **much** faster and smaller, and `--draft` (810p @ 24fps) is the fast-iteration preset; use it
 for previews and re-render at 1080p only for the final. **A full-length 1080p render can take tens of
 minutes** — tell the user the resolution/time tradeoff up front and prefer `--draft` while iterating.
-`--crf N` (higher = smaller file) trims size without dropping resolution. Concurrency is auto-detected
-from cores + free RAM. The render is quiet — add `--progress` and/or background it for long jobs.
+`--crf N` (higher = smaller file) trims size without dropping resolution. `--captions` burns the
+narration in as subtitles (default off; use it when the user asks for captions/subtitles or an
+accessible cut). Concurrency is auto-detected from cores + free RAM. The render is quiet — add
+`--progress` and/or background it for long jobs.
 
 ## 8. Report
 Give the user the result as a **clickable link** so they don't have to hunt the filesystem —

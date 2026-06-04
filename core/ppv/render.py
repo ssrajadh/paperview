@@ -117,7 +117,8 @@ def _clear_and_copy(src: Path, dst: Path) -> int:
 
 def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = None,
            progress: bool = False, resolution: str | None = None, fps: int | None = None,
-           crf: int | None = None, draft: bool = False, open_after: bool = False) -> dict:
+           crf: int | None = None, draft: bool = False, open_after: bool = False,
+           captions: bool | None = None) -> dict:
     from . import schema
     work = Path(workdir)
     out_mp4 = str(Path(out_mp4).expanduser().resolve())
@@ -146,7 +147,9 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     scenes, warns = _guard_scenes(scenes, work / "assets")
     for w in warns:
         print(f"  ⚠ {w}")
-    merged = {**plan, "meta": {**meta, "audio": True, "fps": fps, "resolution": resolution},
+    cap_on = meta.get("captions", False) if captions is None else captions
+    merged = {**plan, "meta": {**meta, "audio": True, "fps": fps, "resolution": resolution,
+                               "captions": cap_on},
               "scenes": scenes}
     props_file = work / "_props.json"
     props_file.write_text(json.dumps({"plan": merged}))

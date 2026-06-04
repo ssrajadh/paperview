@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, Audio, staticFile, useVideoConfig } from "remotion";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { REGISTRY } from "./components";
+import { REGISTRY, Caption } from "./components";
 import { SceneErrorBoundary } from "./components/SceneErrorBoundary";
 import { sceneVisualFrames, TRANSITION } from "./layout";
 
@@ -14,6 +14,7 @@ import { sceneVisualFrames, TRANSITION } from "./layout";
  *  at full volume through the dissolve. */
 export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
   const withAudio = plan?.meta?.audio !== false;
+  const captions = plan?.meta?.captions === true;
   const scenes: any[] = plan?.scenes ?? [];
   const { fps } = useVideoConfig();
   return (
@@ -26,6 +27,7 @@ export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
               <SceneErrorBoundary fallbackText={s.narration}>
                 <Comp {...(s.props || {})} />
               </SceneErrorBoundary>
+              {captions && <Caption text={s.narration} />}
               {withAudio && <Audio src={staticFile(`audio/scene${s.id}.wav`)} />}
             </TransitionSeries.Sequence>
           );

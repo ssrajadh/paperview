@@ -133,7 +133,7 @@ def cmd_render(args) -> int:
         return rc
     render(plan, args.workdir, args.out, concurrency=args.concurrency, progress=args.progress,
            resolution=args.resolution, fps=args.fps, crf=args.crf, draft=args.draft,
-           open_after=args.open)
+           open_after=args.open, captions=args.captions)
     return 0
 
 
@@ -198,6 +198,8 @@ def main(argv=None) -> int:
                     help=f"fast iteration preset ({schema.DRAFT_RESOLUTION} @ {schema.DRAFT_FPS}fps)")
     sr.add_argument("--crf", type=int, default=None,
                     help="h264 quality/size knob (higher = smaller file; Remotion default ~18)")
+    sr.add_argument("--captions", action=argparse.BooleanOptionalAction, default=None,
+                    help="burn per-scene narration as subtitles (--no-captions to force off)")
     sr.add_argument("--concurrency", type=int, default=None)
     sr.add_argument("--progress", action="store_true", help="show Remotion render progress")
     sr.add_argument("--open", action="store_true", help="auto-open the MP4 when done (opt-in; default is a click-to-play link)")

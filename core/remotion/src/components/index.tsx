@@ -223,6 +223,24 @@ export const Outro: React.FC<any> = ({ text, tags = [] }) => {
   );
 };
 
+// ---------------- caption overlay (opt-in subtitles) ----------------
+/** A subtitle bar showing the scene's narration verbatim, pinned to the bottom. Opt-in
+ *  via meta.captions / `ppv render --captions`. Rendered inside each scene's sequence so
+ *  it fades with the cross-fade and is timed to that scene. */
+export const Caption: React.FC<{ text: string }> = ({ text }) => {
+  const frame = useCurrentFrame();
+  if (!text) return null;
+  return (
+    <AbsoluteFill style={{ ...base, justifyContent: "flex-end", alignItems: "center",
+      padding: "0 200px 64px", pointerEvents: "none" }}>
+      <div style={{ opacity: fade(frame, 2, 8), maxWidth: 1480, textAlign: "center",
+        background: "rgba(8,11,26,0.72)", color: C.text, fontSize: 34, fontWeight: 600,
+        lineHeight: 1.32, padding: "16px 30px", borderRadius: 14,
+        border: `1px solid ${C.line}`, backdropFilter: "blur(4px)" }}>{text}</div>
+    </AbsoluteFill>
+  );
+};
+
 export const REGISTRY: Record<string, React.FC<any>> = {
   title: Title, statement: Statement, bullets: Bullets, figure: Figure,
   equation: Equation, comparison: Comparison, stats: Stats, outro: Outro,

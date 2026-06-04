@@ -122,6 +122,9 @@ def validate(plan: dict) -> list[str]:
     fps = meta.get("fps")
     if fps is not None and (not isinstance(fps, int) or fps <= 0):
         errors.append(f"meta.fps '{fps}' must be a positive integer")
+    caps = meta.get("captions")
+    if caps is not None and not isinstance(caps, bool):
+        errors.append(f"meta.captions '{caps}' must be a boolean")
 
     for i, s in enumerate(scenes):
         where = f"scenes[{i}]"
@@ -199,6 +202,8 @@ def plan_schema() -> dict:
                                    "description": "Output size; --resolution/--draft override."},
                     "fps": {"type": "integer", "default": DEFAULT_FPS,
                             "description": "Frame rate; --fps/--draft override."},
+                    "captions": {"type": "boolean", "default": False,
+                                 "description": "Burn narration as subtitles; --captions/--no-captions override."},
                     "audio": {"type": "boolean", "default": True},
                 },
             },
