@@ -15,7 +15,7 @@ export const Title: React.FC<any> = ({ title, subtitle }) => {
   const s = spring({ frame, fps, config: { damping: 14, stiffness: 90, mass: 0.9 } });
   return (
     <AbsoluteFill style={base}>
-      <Background graph />
+      <Background hero />
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 90, textAlign: "center" }}>
         <div style={{ transform: `scale(${interpolate(s, [0, 1], [0.82, 1])})`, opacity: s, color: C.text,
           fontSize: 116, fontWeight: 900, letterSpacing: -3, lineHeight: 1.04,
@@ -205,7 +205,7 @@ export const Outro: React.FC<any> = ({ text, tags = [] }) => {
   const phrase = spring({ frame: frame - 70, fps, config: { damping: 14, stiffness: 80 } });
   return (
     <AbsoluteFill style={base}>
-      <Background graph />
+      <Background hero />
       {placed.map(([t, x, y], i) => {
         const op = interpolate(frame, [16 + i * 7, 40 + i * 7, 70, 95], [0, 0.8, 0.8, 0],
           { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
