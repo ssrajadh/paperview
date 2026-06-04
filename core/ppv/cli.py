@@ -2,6 +2,7 @@
 
   ppv doctor                              health-check the toolchain
   ppv parse  <pdf|md|txt> --out <dir>     text + figures (PDF, Markdown, or text)
+  ppv math   <arxiv-id|pdf> --out <dir>   real display equations from arXiv LaTeX source
   ppv validate <plan.json> [--assets D]   fast-fail plan check (no TTS/render cost)
   ppv tts    <plan.json> --out <dir>      narration WAVs + durations.json
   ppv tts    --list-voices                list Supertonic voice presets
@@ -65,6 +66,13 @@ def cmd_parse(args) -> int:
     from .ingest import parse_source, summarize
     manifest = parse_source(args.source, args.out, cache=not args.no_cache)
     print(summarize(manifest))
+    return 0
+
+
+def cmd_math(args) -> int:
+    from .mathx import extract_from_source, summarize_math
+    manifest = extract_from_source(args.source, args.out)
+    print(summarize_math(manifest))
     return 0
 
 
@@ -168,6 +176,11 @@ def main(argv=None) -> int:
     sp.add_argument("source"); sp.add_argument("--out", required=True)
     sp.add_argument("--no-cache", action="store_true", help="bypass the parse cache")
     sp.set_defaults(func=cmd_parse)
+
+    sm = sub.add_parser("math", help="extract real display equations from arXiv LaTeX source")
+    sm.add_argument("source", help="arXiv id / URL, or a PDF / text file that names one")
+    sm.add_argument("--out", required=True)
+    sm.set_defaults(func=cmd_math)
 
     sc = sub.add_parser("cache", help="show / prune / clear the parse + TTS caches")
     sc.add_argument("--prune", type=float, metavar="DAYS", nargs="?", const=30.0,

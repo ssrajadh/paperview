@@ -45,6 +45,19 @@ text) and **view every figure** in `$WORK/assets/` with the Read tool — you mu
 figure actually depicts before you reference it. (A text source with no images yields no figures —
 that's fine; lean on `equation`/`bullets`/`statement`/`comparison` instead.)
 
+## 3b. Extract the paper's real equations (arXiv) — don't typeset math from memory
+Reconstructing equations from your own recall of the paper is the validated #1 faithfulness risk.
+When the source is an arXiv paper — an id/URL, or a PDF that prints `arXiv:NNNN.NNNNN` on page 1 —
+pull the **actual** LaTeX instead:
+```bash
+~/.paperview/venv/bin/ppv math "<source path or arXiv id/URL>" --out "$WORK"
+```
+Read `$WORK/math.json`: it lists the paper's real display equations as KaTeX-ready `tex` (custom
+macros already expanded), each with the preceding sentence as `context` to help you place it. **Copy
+these `tex` strings verbatim into your `equation` scenes** rather than writing the math yourself. If
+`math.json` carries a `note` (no arXiv id, or not on arXiv), transcribe equations carefully from the
+PDF/figures instead — and prefer fewer, high-confidence equations over guessed ones.
+
 ## 4. Author the scene plan → `$WORK/plan.json`
 Run `~/.paperview/venv/bin/ppv components` for the component list + props, and
 `~/.paperview/venv/bin/ppv schema` for the full plan contract (meta fields, valid `aspect`/`voice`).
@@ -73,7 +86,8 @@ Guidance for a good plan:
     *"the query vector cue and the key vector kay"*. `ppv validate` warns on lone letters (except
     a/A/I, which collide with articles — handle those yourself).
 - **Visuals:** pick the component that best fits each beat — don't force a template. Use `figure`
-  only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$`); use
+  only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$` — prefer the
+verbatim strings from `$WORK/math.json`, step 3b); use
   `comparison`/`stats`/`bullets` to keep it varied. Respect the user's focus and length.
 - Each scene needs `narration`, a valid `component`, and that component's required props.
 
