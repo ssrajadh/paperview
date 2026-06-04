@@ -4,6 +4,7 @@ import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { REGISTRY, Caption } from "./components";
 import { SceneErrorBoundary } from "./components/SceneErrorBoundary";
+import { THEMES, ThemeCtx, ToneCtx } from "./theme";
 import { sceneVisualFrames, TRANSITION } from "./layout";
 
 /** The whole video. `plan` arrives as input props (see Root calculateMetadata);
@@ -16,18 +17,23 @@ export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
   const withAudio = plan?.meta?.audio !== false;
   const captions = plan?.meta?.captions === true;
   const scenes: any[] = plan?.scenes ?? [];
+  const theme = THEMES[plan?.meta?.theme] ?? THEMES.midnight;
+  const denom = Math.max(1, scenes.length - 1);
   const { fps } = useVideoConfig();
   return (
-    <AbsoluteFill style={{ backgroundColor: "#0a0e1f" }}>
+    <ThemeCtx.Provider value={theme}>
+    <AbsoluteFill style={{ backgroundColor: theme.bg0 }}>
       <TransitionSeries>
         {scenes.flatMap((s: any, i: number) => {
           const Comp = REGISTRY[s.component] ?? REGISTRY["statement"];
           const seq = (
             <TransitionSeries.Sequence key={`s${s.id}`} durationInFrames={sceneVisualFrames(s, fps)}>
-              <SceneErrorBoundary fallbackText={s.narration}>
-                <Comp {...(s.props || {})} />
-              </SceneErrorBoundary>
-              {captions && <Caption text={s.narration} />}
+              <ToneCtx.Provider value={i / denom}>
+                <SceneErrorBoundary fallbackText={s.narration}>
+                  <Comp {...(s.props || {})} />
+                </SceneErrorBoundary>
+                {captions && <Caption text={s.narration} />}
+              </ToneCtx.Provider>
               {withAudio && <Audio src={staticFile(`audio/scene${s.id}.wav`)} />}
             </TransitionSeries.Sequence>
           );
@@ -43,5 +49,6 @@ export const PaperVideo: React.FC<{ plan: any }> = ({ plan }) => {
         })}
       </TransitionSeries>
     </AbsoluteFill>
+    </ThemeCtx.Provider>
   );
 };

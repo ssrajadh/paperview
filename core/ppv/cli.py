@@ -141,7 +141,7 @@ def cmd_render(args) -> int:
         return rc
     render(plan, args.workdir, args.out, concurrency=args.concurrency, progress=args.progress,
            resolution=args.resolution, fps=args.fps, crf=args.crf, draft=args.draft,
-           open_after=args.open, captions=args.captions)
+           open_after=args.open, captions=args.captions, theme=args.theme)
     return 0
 
 
@@ -151,7 +151,7 @@ def cmd_preview(args) -> int:
     if (rc := _check(plan, assets_dir=str(Path(args.workdir).expanduser() / "assets"))) != 0:
         return rc
     preview(plan, args.workdir, scene=args.scene, out=args.out,
-            all_scenes=args.all_scenes, resolution=args.resolution)
+            all_scenes=args.all_scenes, resolution=args.resolution, theme=args.theme)
     return 0
 
 
@@ -213,6 +213,8 @@ def main(argv=None) -> int:
                     help="h264 quality/size knob (higher = smaller file; Remotion default ~18)")
     sr.add_argument("--captions", action=argparse.BooleanOptionalAction, default=None,
                     help="burn per-scene narration as subtitles (--no-captions to force off)")
+    sr.add_argument("--theme", choices=schema.THEMES, default=None,
+                    help=f"backdrop palette (default {schema.DEFAULT_THEME}); overrides meta.theme")
     sr.add_argument("--concurrency", type=int, default=None)
     sr.add_argument("--progress", action="store_true", help="show Remotion render progress")
     sr.add_argument("--open", action="store_true", help="auto-open the MP4 when done (opt-in; default is a click-to-play link)")
@@ -224,6 +226,7 @@ def main(argv=None) -> int:
     pv.add_argument("--all", dest="all_scenes", action="store_true", help="one still per scene")
     pv.add_argument("--out", default=None, help="output PNG (single) or directory (--all)")
     pv.add_argument("--resolution", choices=list(schema.RESOLUTIONS), default=None)
+    pv.add_argument("--theme", choices=schema.THEMES, default=None)
     pv.set_defaults(func=cmd_preview)
 
     sub.add_parser("components", help="per-component required/optional props").set_defaults(func=cmd_components)

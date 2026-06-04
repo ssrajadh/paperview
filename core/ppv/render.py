@@ -118,7 +118,7 @@ def _clear_and_copy(src: Path, dst: Path) -> int:
 def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = None,
            progress: bool = False, resolution: str | None = None, fps: int | None = None,
            crf: int | None = None, draft: bool = False, open_after: bool = False,
-           captions: bool | None = None) -> dict:
+           captions: bool | None = None, theme: str | None = None) -> dict:
     from . import schema
     work = Path(workdir)
     out_mp4 = str(Path(out_mp4).expanduser().resolve())
@@ -148,8 +148,9 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     for w in warns:
         print(f"  ⚠ {w}")
     cap_on = meta.get("captions", False) if captions is None else captions
+    theme_name = theme or meta.get("theme") or schema.DEFAULT_THEME
     merged = {**plan, "meta": {**meta, "audio": True, "fps": fps, "resolution": resolution,
-                               "captions": cap_on},
+                               "captions": cap_on, "theme": theme_name},
               "scenes": scenes}
     props_file = work / "_props.json"
     props_file.write_text(json.dumps({"plan": merged}))
@@ -232,7 +233,8 @@ def _content_end_frame(scenes: list[dict], idx: int, fps: int) -> int:
 
 
 def preview(plan: dict, workdir: str, scene: int | None = None, out: str | None = None,
-            all_scenes: bool = False, resolution: str | None = None) -> list[str]:
+            all_scenes: bool = False, resolution: str | None = None,
+            theme: str | None = None) -> list[str]:
     """Render a single scene (or every scene) to a still PNG — a cheap layout check
     before committing to a multi-minute video render. No TTS/audio needed."""
     from . import schema
@@ -252,7 +254,9 @@ def preview(plan: dict, workdir: str, scene: int | None = None, out: str | None 
     scenes, warns = _guard_scenes(scenes, work / "assets")
     for w in warns:
         print(f"  ⚠ {w}")
-    merged = {**plan, "meta": {**meta, "audio": False, "fps": fps, "resolution": resolution},
+    theme_name = theme or meta.get("theme") or schema.DEFAULT_THEME
+    merged = {**plan, "meta": {**meta, "audio": False, "fps": fps, "resolution": resolution,
+                               "theme": theme_name},
               "scenes": scenes}
     props_file = work / "_preview_props.json"
     props_file.write_text(json.dumps({"plan": merged}))

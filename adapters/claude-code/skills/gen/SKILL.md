@@ -125,8 +125,10 @@ for previews and re-render at 1080p only for the final. **A full-length 1080p re
 minutes** — tell the user the resolution/time tradeoff up front and prefer `--draft` while iterating.
 `--crf N` (higher = smaller file) trims size without dropping resolution. `--captions` burns the
 narration in as subtitles (default off; use it when the user asks for captions/subtitles or an
-accessible cut). Concurrency is auto-detected from cores + free RAM. The render is quiet — add
-`--progress` and/or background it for long jobs.
+accessible cut). `--theme midnight|slate|dusk` picks the backdrop palette (default `midnight` navy;
+`slate` = cool/neutral, `dusk` = warm — only the ambient background changes, content stays legible);
+honor a look the user asks for, else leave the default. Concurrency is auto-detected from cores +
+free RAM. The render is quiet — add `--progress` and/or background it for long jobs.
 
 ## 8. Report
 Give the user the result as a **clickable link** so they don't have to hunt the filesystem —

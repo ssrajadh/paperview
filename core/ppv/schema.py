@@ -58,6 +58,11 @@ COMPONENTS: dict[str, dict] = {
 
 ASPECTS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 
+# Backdrop palettes (must match remotion/src/theme.tsx THEMES). A theme only changes the
+# ambient background; content colors are shared, so legibility is identical across themes.
+THEMES = ["midnight", "slate", "dusk"]
+DEFAULT_THEME = "midnight"
+
 # Supertonic voice presets. M# = male, F# = female; audition with `ppv tts --voice <id>`.
 VOICES = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
 DEFAULT_VOICE = "F2"
@@ -125,6 +130,9 @@ def validate(plan: dict) -> list[str]:
     caps = meta.get("captions")
     if caps is not None and not isinstance(caps, bool):
         errors.append(f"meta.captions '{caps}' must be a boolean")
+    theme = meta.get("theme")
+    if theme is not None and theme not in THEMES:
+        errors.append(f"meta.theme '{theme}' not in {THEMES}")
 
     for i, s in enumerate(scenes):
         where = f"scenes[{i}]"
@@ -204,6 +212,8 @@ def plan_schema() -> dict:
                             "description": "Frame rate; --fps/--draft override."},
                     "captions": {"type": "boolean", "default": False,
                                  "description": "Burn narration as subtitles; --captions/--no-captions override."},
+                    "theme": {"enum": THEMES, "default": DEFAULT_THEME,
+                              "description": "Backdrop palette; --theme overrides meta.theme."},
                     "audio": {"type": "boolean", "default": True},
                 },
             },
