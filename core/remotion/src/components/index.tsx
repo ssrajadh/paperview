@@ -84,7 +84,10 @@ export const Figure: React.FC<any> = ({ src, caption, label }) => {
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 70 }}>
         <div style={{ position: "relative", opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 28)}px)` }}>
           <Card>
-            <Img src={staticFile(`assets/${src}`)} style={{ height: imgH, width: "auto", maxWidth: "82vw" }} />
+            {/* cap BOTH dimensions with auto width/height so the browser preserves aspect
+                ratio — a fixed height + maxWidth would clamp width and squish wide figures. */}
+            <Img src={staticFile(`assets/${src}`)}
+              style={{ maxHeight: imgH, maxWidth: "84vw", width: "auto", height: "auto" }} />
           </Card>
           {label && (
             <div style={{ position: "absolute", top: -22, left: 36, background: C.accent, color: "#0a0e1f",
