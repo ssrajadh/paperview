@@ -19,7 +19,7 @@ Provision everything `/ppv:gen` needs to run locally. This is idempotent — saf
    bash <repo>/scripts/setup.sh
    ```
    It creates `~/.paperview/venv` with the `ppv` CLI, installs the Remotion node deps, checks
-   ffmpeg, and warms the Supertonic + Chromium models (first run downloads them — may take a few
+   ffmpeg, and warms the Kokoro TTS + Chromium models (first run downloads them — may take a few
    minutes).
 
 3. **Confirm health** by running the doctor and showing its output:

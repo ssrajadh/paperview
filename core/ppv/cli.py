@@ -5,7 +5,7 @@
   ppv math   <arxiv-id|pdf> --out <dir>   real display equations from arXiv LaTeX source
   ppv validate <plan.json> [--assets D]   fast-fail plan check (no TTS/render cost)
   ppv tts    <plan.json> --out <dir>      narration WAVs + durations.json
-  ppv tts    --list-voices                list Supertonic voice presets
+  ppv tts    --list-voices                list TTS providers + their voices
   ppv preview <plan.json> --workdir <dir> [--scene N | --all]   single-scene still
   ppv render <plan.json> --workdir <dir> --out <mp4> [--progress]
   ppv cache  [--prune [DAYS] | --clear]   inspect / prune the parse + TTS caches
@@ -42,7 +42,13 @@ def cmd_doctor(args) -> int:
 
     print("ppv doctor")
     check("pymupdf", lambda: __import__("fitz").VersionBind)
-    check("supertonic", lambda: __import__("supertonic").__version__ if hasattr(__import__("supertonic"), "__version__") else "installed")
+
+    def _default_tts():
+        from .providers import DEFAULT_PROVIDER, provider_meta
+        pcls = provider_meta(DEFAULT_PROVIDER)
+        __import__(pcls.pip)
+        return f"{pcls.pip} installed (default provider '{DEFAULT_PROVIDER}')"
+    check("tts", _default_tts)
     check("soundfile", lambda: __import__("soundfile").__version__)
     check("node", lambda: subprocess.run(["node", "--version"], capture_output=True, text=True, check=True).stdout.strip())
     check("ffmpeg", lambda: subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, check=True).stdout.splitlines()[0])
@@ -117,19 +123,33 @@ def cmd_validate(args) -> int:
 
 
 def cmd_tts(args) -> int:
-    from .tts import synth
+    from . import providers
     if args.list_voices:
-        print("Supertonic voices (default {}):".format(schema.DEFAULT_VOICE))
-        print("  " + "  ".join(schema.VOICES))
-        print("  M# = male, F# = female; audition with `ppv tts <plan> --voice <id>`.")
+        for pid in providers.provider_ids():
+            pcls = providers.provider_meta(pid)
+            mark = "  (default)" if pid == providers.DEFAULT_PROVIDER else ""
+            print(f"{pid}{mark}: {pcls.label}")
+            if pcls.voices:
+                print(f"  voices (default {pcls.default_voice}): " + "  ".join(pcls.voices))
+            else:
+                print(f"  voices: account-specific (default {pcls.default_voice})")
+        print("audition with `ppv tts <plan> --provider <id> --voice <id>`.")
         return 0
     if not args.plan or not args.out:
         print("tts: <plan> and --out are required (or use --list-voices)", file=sys.stderr)
         return 2
     plan = _load(args.plan)
+    # Fold --provider/--voice into meta *before* validation, so voice is checked against the
+    # effective provider (else a CLI override fails on the plan's old, now-wrong meta.voice).
+    meta = plan.setdefault("meta", {})
+    if args.provider is not None:
+        meta["provider"] = args.provider
+    if args.voice is not None:
+        meta["voice"] = args.voice
     if (rc := _check(plan)) != 0:
         return rc
-    synth(plan, args.out, voice=args.voice, steps=args.steps, cache=not args.no_cache)
+    from .tts import synth
+    synth(plan, args.out, speed=args.speed, cache=not args.no_cache)
     return 0
 
 
@@ -195,11 +215,13 @@ def main(argv=None) -> int:
 
     st = sub.add_parser("tts", help="synthesize narration for a scene plan")
     st.add_argument("plan", nargs="?"); st.add_argument("--out", default=None)
-    st.add_argument("--voice", default=None)
-    st.add_argument("--steps", type=int, default=None,
-                    help=f"diffusion steps (default {schema.DEFAULT_TTS_STEPS}; lower=faster, higher=smoother)")
+    st.add_argument("--provider", default=None,
+                    help="TTS engine (see --list-voices); overrides meta.provider")
+    st.add_argument("--voice", default=None, help="voice id for the chosen provider")
+    st.add_argument("--speed", type=float, default=1.0,
+                    help="speaking-rate multiplier (1.0 = natural; >1 faster, <1 slower)")
     st.add_argument("--no-cache", action="store_true", help="bypass the per-scene narration cache")
-    st.add_argument("--list-voices", action="store_true", help="list voice presets and exit")
+    st.add_argument("--list-voices", action="store_true", help="list providers + voices and exit")
     st.set_defaults(func=cmd_tts)
 
     sr = sub.add_parser("render", help="render a scene plan to MP4")

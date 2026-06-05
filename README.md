@@ -2,8 +2,9 @@
 
 Turn a research-paper PDF into a narrated, animated explainer video — using **deterministic
 rendering** (real typeset math + the paper's real figures, rendered with code), not generative
-video. Runs **locally**: local TTS (Supertonic), local render (Remotion). No API keys for the
-heavy lifting; the planning/composition is done by the coding agent you already use.
+video. Runs **locally**: local TTS (Kokoro; or ElevenLabs for a cloud upgrade), local render
+(Remotion). No API keys for the heavy lifting; the planning/composition is done by the coding
+agent you already use.
 
 > Status: **v1.** Claude Code adapter only.
 

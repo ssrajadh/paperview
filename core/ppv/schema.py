@@ -10,6 +10,8 @@ visual from a fixed library (v1: no freeform code). Keep narration 1-3 sentences
 """
 from __future__ import annotations
 
+from .providers import DEFAULT_PROVIDER, provider_ids, provider_meta
+
 # component name -> (required props, optional props, one-line purpose)
 COMPONENTS: dict[str, dict] = {
     "title": {
@@ -63,9 +65,9 @@ ASPECTS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 THEMES = ["midnight", "slate", "dusk"]
 DEFAULT_THEME = "midnight"
 
-# Supertonic voice presets. M# = male, F# = female; audition with `ppv tts --voice <id>`.
-VOICES = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
-DEFAULT_VOICE = "F2"
+# Voices live on each provider (see providers.py); the valid set depends on meta.provider.
+# `ppv tts --list-voices` prints them per provider. The default provider's default voice:
+DEFAULT_VOICE = provider_meta(DEFAULT_PROVIDER).default_voice
 
 # Output resolution presets -> Remotion render scale vs the 1080 base. Only scales that
 # are integer-exact for every aspect AND exact in binary float (avoids the 720.036 trap):
@@ -78,11 +80,6 @@ DEFAULT_FPS = 30
 # hardware-driven (same plan must render identically everywhere — see notes D5/D12).
 DRAFT_RESOLUTION = "810p"
 DRAFT_FPS = 24
-
-# Supertonic diffusion steps. NOT monotonic — 16 was the empirical sweet spot (judged most
-# natural, beating both 8 and 32; higher over-smooths prosody). Don't naively raise this.
-# ~linear cost (16 ≈ 2x of 8) but TTS is a minority of the pipeline. Override: `ppv tts --steps`.
-DEFAULT_TTS_STEPS = 16
 
 # Characters TTS reads poorly (math/logic symbols) — narration should spell these out.
 _TTS_HOSTILE = set("¬≤≥⟹⟸⟺↔→←×÷≈≠≅≡√∞∑∏∫∂∇∈∉⊂⊆⊃⊇∪∩∧∨∀∃±∓·∘°µΩ⊗⊕")
@@ -118,9 +115,15 @@ def validate(plan: dict) -> list[str]:
     aspect = meta.get("aspect", "16:9")
     if aspect not in ASPECTS:
         errors.append(f"meta.aspect '{aspect}' not in {sorted(ASPECTS)}")
+    provider = meta.get("provider")
+    if provider is not None and provider not in provider_ids():
+        errors.append(f"meta.provider '{provider}' not in {provider_ids()}")
     voice = meta.get("voice")
-    if voice is not None and voice not in VOICES:
-        errors.append(f"meta.voice '{voice}' not in {VOICES}")
+    pid = provider if provider in provider_ids() else DEFAULT_PROVIDER
+    if voice is not None:
+        pcls = provider_meta(pid)
+        if pcls.validate_voice and voice not in pcls.voices:
+            errors.append(f"meta.voice '{voice}' not a {pid} voice {list(pcls.voices)}")
     res = meta.get("resolution")
     if res is not None and res not in RESOLUTIONS:
         errors.append(f"meta.resolution '{res}' not in {sorted(RESOLUTIONS)}")
@@ -204,8 +207,11 @@ def plan_schema() -> dict:
                 "properties": {
                     "title": {"type": "string"},
                     "aspect": {"enum": sorted(ASPECTS), "default": "16:9"},
-                    "voice": {"enum": VOICES, "default": DEFAULT_VOICE,
-                              "description": "Supertonic preset; --voice overrides meta.voice."},
+                    "provider": {"enum": provider_ids(), "default": DEFAULT_PROVIDER,
+                                 "description": "TTS engine; --provider overrides meta.provider."},
+                    "voice": {"type": "string", "default": DEFAULT_VOICE,
+                              "description": "Voice id for the chosen provider (see `ppv tts "
+                                             "--list-voices`); --voice overrides meta.voice."},
                     "resolution": {"enum": sorted(RESOLUTIONS), "default": DEFAULT_RESOLUTION,
                                    "description": "Output size; --resolution/--draft override."},
                     "fps": {"type": "integer", "default": DEFAULT_FPS,

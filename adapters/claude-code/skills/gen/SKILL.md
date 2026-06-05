@@ -24,7 +24,8 @@ relative paths; if missing or ambiguous, **ask — don't guess**), and any steer
   `figure` and explains terms; an expert cut spends more on `equation`/`comparison` and assumes
   vocabulary. Keep claims calibrated either way (§4).
 - **focus** — a sub-topic to emphasize (spend more scenes there, trim the rest).
-- **aspect** (`16:9` default / `9:16` / `1:1`), **voice** (Supertonic `M1–M5`/`F1–F5`, default `F2`),
+- **aspect** (`16:9` default / `9:16` / `1:1`), **provider/voice** (default Kokoro, voice `af_heart`;
+  run `ppv tts --list-voices` for the voices each provider offers),
   **captions** (on/off — burned-in subtitles, default off; set `meta.captions` or pass `--captions`).
 
 Briefly state your interpretation (*"paper = X.pdf · ~2 min (8 scenes) · expert · 16:9 — generating
