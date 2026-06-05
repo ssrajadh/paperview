@@ -22,7 +22,9 @@ relative paths; if missing or ambiguous, **ask — don't guess**), and any steer
 - **depth / audience** — *intro / general* vs *expert*, *intuition-heavy* vs *math-heavy*. This sets
   the narration register and the component mix: a general-audience cut leans on `statement`/`bullets`/
   `figure` and explains terms; an expert cut spends more on `equation`/`comparison` and assumes
-  vocabulary. Keep claims calibrated either way (§4).
+  vocabulary. Keep claims calibrated either way (§4). For papers/repos with an algorithm or key
+  source snippet, use `code` — paste a real, focused snippet (~6-16 lines), set `lang`, and use
+  `highlightLines` so the narration can walk through specific lines.
 - **focus** — a sub-topic to emphasize (spend more scenes there, trim the rest).
 - **aspect** (`16:9` default / `9:16` / `1:1`), **provider/voice** (default Kokoro, voice `af_heart`;
   run `ppv tts --list-voices` for the voices each provider offers),

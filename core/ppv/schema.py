@@ -40,6 +40,15 @@ COMPONENTS: dict[str, dict] = {
         "optional": ["heading", "caption"],
         "purpose": "Typeset a LaTeX equation (KaTeX). tex = LaTeX string (no $). Optional heading/caption.",
     },
+    "code": {
+        "required": ["code"],
+        "optional": ["lang", "filename", "highlightLines", "startLine", "heading", "caption"],
+        "purpose": "Source snippet in a dark editor panel (syntax-highlighted, line-numbered). "
+                   "code = the snippet (keep it focused, ~6-16 lines). lang = highlight language "
+                   "(e.g. python/ts/rust; omit for plain/pseudocode). filename = path shown in the "
+                   "title bar. highlightLines = [int] (1-based) to emphasize lines the narration "
+                   "walks through. startLine = line number of the first line (default 1).",
+    },
     "comparison": {
         "required": ["rowLabels", "columns"],
         "optional": ["heading"],

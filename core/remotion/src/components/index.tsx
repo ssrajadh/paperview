@@ -4,6 +4,7 @@ import {
 } from "remotion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { Highlight, themes } from "prism-react-renderer";
 import { Background, Card, Heading, C, FONT, MONO, fade, rise } from "../theme";
 
 const base: React.CSSProperties = { fontFamily: FONT };
@@ -131,6 +132,86 @@ export const Equation: React.FC<any> = ({ tex, heading, caption }) => {
   );
 };
 
+// ---------------- code ----------------
+// A dark "editor" panel for source snippets — built for codebase walkthroughs, not just
+// paper listings. `lang` drives Prism syntax colors (omit / "text" => plain monospace, which
+// suits pseudocode). `filename` shows a title bar, line numbers are always on, and
+// `highlightLines` (1-based) tints lines so narration can point at them. Font auto-fits the
+// snippet so a 6-liner and a 16-liner both read well. Deterministic: Prism is pure tokenizing.
+export const Code: React.FC<any> = ({ code = "", lang = "text", heading, caption, filename,
+  highlightLines = [], startLine = 1 }) => {
+  const frame = useCurrentFrame();
+  const { height } = useVideoConfig();
+  const src = String(code).replace(/\s+$/, "");           // drop trailing blank lines
+  const lines = src.split("\n");
+  const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
+  const hot = new Set<number>((highlightLines || []).map(Number));
+
+  // auto-fit: cap by the panel's height (line count) AND width (longest line), then clamp.
+  const maxH = 0.66 * height, maxW = 1480;
+  const gutter = String(startLine + lines.length - 1).length;  // digits in the largest line no.
+  const byH = maxH / (lines.length * 1.5);
+  const byW = maxW / ((longest + gutter + 3) * 0.62);
+  const fs = Math.max(18, Math.min(40, byH, byW));
+  const lh = Math.round(fs * 1.5);
+
+  return (
+    <AbsoluteFill style={base}>
+      <Background />
+      {heading && <Heading frame={frame}>{heading}</Heading>}
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 70,
+        paddingTop: heading ? 150 : 70, flexDirection: "column" }}>
+        <div style={{ opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 26)}px)`,
+          width: "fit-content", maxWidth: "92vw", borderRadius: 18, overflow: "hidden",
+          background: "#0c1124", border: `1px solid ${C.line}`, boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }}>
+          {/* title bar: traffic-light dots + filename (editor feel) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 26px",
+            background: "rgba(255,255,255,0.04)", borderBottom: `1px solid ${C.line}` }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              {[C.bad, C.accent, C.good].map((c) => (
+                <div key={c} style={{ width: 15, height: 15, borderRadius: "50%", background: c, opacity: 0.85 }} />
+              ))}
+            </div>
+            {filename && <div style={{ fontFamily: MONO, fontSize: 26, color: C.dim, marginLeft: 8 }}>{filename}</div>}
+          </div>
+          {/* code body */}
+          <Highlight code={src} language={lang} theme={themes.nightOwl}>
+            {({ tokens, getLineProps, getTokenProps }) => (
+              <div style={{ fontFamily: MONO, fontSize: fs, lineHeight: `${lh}px`, padding: "22px 0" }}>
+                {tokens.map((line, i) => {
+                  const lp = getLineProps({ line });
+                  const isHot = hot.has(startLine + i);
+                  return (
+                    <div key={i} {...lp} style={{ ...lp.style, display: "flex",
+                      background: isHot ? "rgba(255,209,102,0.13)" : "transparent",
+                      borderLeft: `4px solid ${isHot ? C.accent : "transparent"}`,
+                      padding: "0 30px 0 26px" }}>
+                      <span style={{ display: "inline-block", width: `${gutter + 1}ch`, textAlign: "right",
+                        marginRight: 28, color: C.dim, opacity: isHot ? 0.9 : 0.45, userSelect: "none" }}>
+                        {startLine + i}
+                      </span>
+                      <span style={{ whiteSpace: "pre" }}>
+                        {line.map((token, k) => {
+                          const tp = getTokenProps({ token });
+                          return <span key={k} {...tp} />;
+                        })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Highlight>
+        </div>
+        {caption && (
+          <div style={{ opacity: fade(frame, 28, 16), color: C.dim, fontSize: 32, marginTop: 28,
+            textAlign: "center", maxWidth: 1500 }}>{caption}</div>
+        )}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
 // ---------------- comparison ----------------
 export const Comparison: React.FC<any> = ({ heading, rowLabels = [], columns = [] }) => {
   const frame = useCurrentFrame();
@@ -246,5 +327,5 @@ export const Caption: React.FC<{ text: string }> = ({ text }) => {
 
 export const REGISTRY: Record<string, React.FC<any>> = {
   title: Title, statement: Statement, bullets: Bullets, figure: Figure,
-  equation: Equation, comparison: Comparison, stats: Stats, outro: Outro,
+  equation: Equation, code: Code, comparison: Comparison, stats: Stats, outro: Outro,
 };
