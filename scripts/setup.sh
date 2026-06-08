@@ -33,7 +33,7 @@ import tempfile, os, soundfile as sf
 from ppv.providers import get_provider, DEFAULT_PROVIDER
 p = get_provider(DEFAULT_PROVIDER)
 out = os.path.join(tempfile.mkdtemp(), "warm.wav")
-p.render("Paper view setup complete.", p.default_voice, 1.0, None, out)
+p.render("Paper view setup complete.", p.default_voice, 1.0, out)
 print(f"  ✓ {DEFAULT_PROVIDER} model ready (", round(sf.info(out).duration, 2), "s )")
 PY
 ( cd "$REPO/core/remotion" && npx remotion browser ensure >/dev/null 2>&1 && echo "  ✓ chromium shell ready" || echo "  ! chromium ensure failed (will download on first render)" )

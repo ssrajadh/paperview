@@ -16,7 +16,6 @@ core/                  source-agnostic engine
   remotion/            deterministic Remotion render project + component library
 adapters/
   claude-code/         Claude Code plugin (name "ppv") → /ppv:setup, /ppv:gen
-docs/                  design doc
 examples/              sample scene plans / outputs
 ```
 
