@@ -52,7 +52,8 @@ COMPONENTS: dict[str, dict] = {
     "comparison": {
         "required": ["rowLabels", "columns"],
         "optional": ["heading"],
-        "purpose": "Compare 2 columns across rows. rowLabels: [str]; "
+        "purpose": "Compare values across rows in 2 or more columns (best up to ~4 at 1080p). "
+                   "rowLabels: [str]; "
                    "columns: [{title: str, highlight?: bool, values: [str]}] (values aligns with rowLabels).",
     },
     "stats": {
