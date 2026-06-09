@@ -1,21 +1,23 @@
 ---
-description: "Generate a narrated, animated explainer video from a research paper PDF. Usage: /ppv:gen <pdf path or arxiv-style request, plus optional steering: length, focus, aspect, voice>."
+description: "Generate a narrated, animated explainer video from a research paper (PDF) or a codebase/repo. Usage: /ppv:gen <pdf path, arxiv-style request, OR a codebase path/topic, plus optional steering: length, focus, aspect, voice>."
 disable-model-invocation: true
 ---
 
-# /ppv:gen — paper PDF → narrated explainer video
+# /ppv:gen — paper or codebase → narrated explainer video
 
 The user's full request is: **$ARGUMENTS**
 
-You are the *planner/composer*. You parse the request, read the paper, author a **scene plan**,
-and drive the deterministic `ppv` CLI (parse → TTS → render). The CLI does the mechanical work;
-your job is the script and the visual choices.
+You are the *planner/composer*. You parse the request, read the source (a research paper **or** a
+codebase), author a **scene plan**, and drive the deterministic `ppv` CLI (parse → TTS → render).
+The CLI does the mechanical work; your job is the script and the visual choices.
 
 `ppv` lives at `~/.paperview/venv/bin/ppv` (run `/ppv:setup` first if it's missing).
 
 ## 1. Parse the request, then echo it back
-From `$ARGUMENTS` extract: the **source path** — a **PDF** or a **text/Markdown** file (resolve `~`,
-relative paths; if missing or ambiguous, **ask — don't guess**), and any steering:
+From `$ARGUMENTS` extract: the **source** — a **PDF**, a **text/Markdown** file, or a **codebase**
+(a repo/directory, a set of source files, or a "explain project X" topic) — resolve `~`, relative
+paths; if missing or ambiguous, **ask — don't guess**. A codebase takes a different path through
+the steps below (no `ppv parse`, no figures — see §3). Then any steering:
 - **length / duration** — a target time (e.g. *"2 minutes"*, *"~5 min"*) → target scene count at
   ~1 scene per 12–15s (default 10–12 scenes ≈ 3 min) **and** a per-scene narration word budget
   (~2.5 words/sec, so a 14s scene ≈ 35 words). Size narration to hit the target; TTS finalizes it.
@@ -39,6 +41,7 @@ WORK=~/.paperview/runs/$(date +%s); mkdir -p "$WORK"
 ```
 
 ## 3. Parse the source
+**Paper / document source** (PDF, Markdown, text):
 ```bash
 ~/.paperview/venv/bin/ppv parse "<source>" --out "$WORK"   # PDF, Markdown, or text
 ```
@@ -47,6 +50,15 @@ first** (lossy round-trip); `ppv parse` reads it directly. Then **read `$WORK/pa
 text) and **view every figure** in `$WORK/assets/` with the Read tool — you must know what each
 figure actually depicts before you reference it. (A text source with no images yields no figures —
 that's fine; lean on `equation`/`bullets`/`statement`/`comparison` instead.)
+
+**Codebase source** (a repo/directory or set of files): **skip `ppv parse` entirely** — there's no
+document to extract. Instead **read the code directly with your own tools**: start at the entry
+points and README, map the architecture (modules, data flow, key abstractions), then open the few
+functions/types that carry the core idea. There are no extracted figures, so the visual load falls
+on `mermaid` (architecture/flow/sequence diagrams), `code` (real snippets — paste actual source,
+set `lang`, use `highlightLines` or `diff` mode), `bullets`, and `comparison`. Skip §3b (no
+equations). Then go straight to §4 and author the plan grounded in the code you actually read — the
+same faithfulness bar applies (don't describe functions/behavior the code doesn't have).
 
 ## 3b. Extract the paper's real equations (arXiv) — don't typeset math from memory
 Reconstructing equations from your own recall of the paper is the validated #1 faithfulness risk.
@@ -99,8 +111,11 @@ Guidance for a good plan:
     a/A/I, which collide with articles — handle those yourself).
 - **Visuals:** pick the component that best fits each beat — don't force a template. Use `figure`
   only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$` — prefer the
-verbatim strings from `$WORK/math.json`, step 3b); use
-  `comparison`/`stats`/`bullets` to keep it varied. Respect the user's focus and length.
+  verbatim strings from `$WORK/math.json`, step 3b); use `mermaid` for an architecture / data-flow /
+  pipeline / sequence diagram when there's no real figure to show (the go-to for codebases and for
+  method overviews — keep it to ~3-10 nodes); use `code` for real source snippets (and `code` with
+  `diff: true` for a before/after change); use `comparison`/`stats`/`bullets` to keep it varied.
+  Respect the user's focus and length.
 - **Cite every reproduced figure.** When you use `figure`, set its `caption` to a source
   attribution (e.g. *"Figure 2 — Vaswani et al., 2017"*). Papers' figures are copyrighted, so
   they're always embedded **with credit**, never anonymously.

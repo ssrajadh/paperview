@@ -1,11 +1,26 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig,
+  AbsoluteFill, Img, cancelRender, continueRender, delayRender, interpolate, spring,
+  staticFile, useCurrentFrame, useVideoConfig,
 } from "remotion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { Highlight, themes } from "prism-react-renderer";
+import mermaid from "mermaid";
 import { Background, Card, Heading, C, FONT, MONO, fade, rise } from "../theme";
+
+// Mermaid is configured once at module load: no auto-start (we render on demand), and
+// deterministic ids so every frame/worker produces byte-identical SVG markup (a render must
+// look the same everywhere — see notes D5/D12). The `neutral` theme reads well on the white
+// Card the diagram sits on, matching the figure/equation visual language.
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "neutral",
+  securityLevel: "loose",
+  deterministicIds: true,
+  deterministicIDSeed: "paperview",
+  fontFamily: FONT,
+});
 
 const base: React.CSSProperties = { fontFamily: FONT };
 
@@ -138,12 +153,21 @@ export const Equation: React.FC<any> = ({ tex, heading, caption }) => {
 // suits pseudocode). `filename` shows a title bar, line numbers are always on, and
 // `highlightLines` (1-based) tints lines so narration can point at them. Font auto-fits the
 // snippet so a 6-liner and a 16-liner both read well. Deterministic: Prism is pure tokenizing.
+// `diff` mode: each line is expected to begin with a `+`/`-`/space marker (unified-diff style);
+// the marker is stripped from the code, shown as a green/red sign in the gutter, and tints the
+// line — for before/after walkthroughs. In diff mode the marker replaces the line-number gutter
+// and overrides `highlightLines`.
 export const Code: React.FC<any> = ({ code = "", lang = "text", heading, caption, filename,
-  highlightLines = [], startLine = 1 }) => {
+  highlightLines = [], startLine = 1, diff = false }) => {
   const frame = useCurrentFrame();
   const { height } = useVideoConfig();
-  const src = String(code).replace(/\s+$/, "");           // drop trailing blank lines
-  const lines = src.split("\n");
+  const raw = String(code).replace(/\s+$/, "");           // drop trailing blank lines
+  const rawLines = raw.split("\n");
+  // diff: remember each line's +/-/context sign, then strip one leading marker so Prism
+  // tokenizes the real code (a leading '+'/'-' would otherwise mis-highlight the line).
+  const signs = diff ? rawLines.map((l) => (l[0] === "+" ? 1 : l[0] === "-" ? -1 : 0)) : [];
+  const lines = diff ? rawLines.map((l) => l.replace(/^[+\- ]/, "")) : rawLines;
+  const src = lines.join("\n");
   const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
   const hot = new Set<number>((highlightLines || []).map(Number));
 
@@ -180,15 +204,20 @@ export const Code: React.FC<any> = ({ code = "", lang = "text", heading, caption
               <div style={{ fontFamily: MONO, fontSize: fs, lineHeight: `${lh}px`, padding: "22px 0" }}>
                 {tokens.map((line, i) => {
                   const lp = getLineProps({ line });
-                  const isHot = hot.has(startLine + i);
+                  const sign = diff ? signs[i] : 0;
+                  const isHot = !diff && hot.has(startLine + i);
+                  const tint = sign > 0 ? "rgba(74,222,128,0.15)" : sign < 0 ? "rgba(251,113,133,0.15)"
+                    : isHot ? "rgba(255,209,102,0.13)" : "transparent";
+                  const edge = sign > 0 ? C.good : sign < 0 ? C.bad : isHot ? C.accent : "transparent";
+                  const gutterColor = sign > 0 ? C.good : sign < 0 ? C.bad : C.dim;
                   return (
                     <div key={i} {...lp} style={{ ...lp.style, display: "flex",
-                      background: isHot ? "rgba(255,209,102,0.13)" : "transparent",
-                      borderLeft: `4px solid ${isHot ? C.accent : "transparent"}`,
+                      background: tint,
+                      borderLeft: `4px solid ${edge}`,
                       padding: "0 30px 0 26px" }}>
                       <span style={{ display: "inline-block", width: `${gutter + 1}ch`, textAlign: "right",
-                        marginRight: 28, color: C.dim, opacity: isHot ? 0.9 : 0.45, userSelect: "none" }}>
-                        {startLine + i}
+                        marginRight: 28, color: gutterColor, opacity: isHot || sign ? 0.9 : 0.45, userSelect: "none" }}>
+                        {diff ? (sign > 0 ? "+" : sign < 0 ? "−" : "") : startLine + i}
                       </span>
                       <span style={{ whiteSpace: "pre" }}>
                         {line.map((token, k) => {
@@ -205,6 +234,69 @@ export const Code: React.FC<any> = ({ code = "", lang = "text", heading, caption
         </div>
         {caption && (
           <div style={{ opacity: fade(frame, 28, 16), color: C.dim, fontSize: 32, marginTop: 28,
+            textAlign: "center", maxWidth: 1500 }}>{caption}</div>
+        )}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ---------------- mermaid (diagrams) ----------------
+// Render a Mermaid diagram (flowchart / sequence / state / class / ER / etc.) to SVG at render
+// time in headless Chrome, then inline it on a white Card. `code` is the Mermaid source. For
+// architecture / data-flow / state diagrams in BOTH papers and codebases, where no real figure
+// exists to extract. delayRender holds the frame until the async render resolves; a syntax error
+// degrades to the raw source + message (one bad diagram never kills the whole render). The
+// module-load config keeps the SVG deterministic.
+export const Mermaid: React.FC<any> = ({ code = "", heading, caption }) => {
+  const frame = useCurrentFrame();
+  const { height } = useVideoConfig();
+  const [handle] = useState(() => delayRender("mermaid"));
+  const [svg, setSvg] = useState("");
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let live = true;
+    mermaid
+      .render("ppv-mermaid", String(code).trim() || "graph TD; A;")
+      .then(({ svg }) => {
+        // Strip the root svg's width/height attributes + inline max-width so the viewBox is the
+        // only size source: the svg then has an intrinsic aspect and our scoped CSS scales it to
+        // fit the card (like the Img trick). Left intact, mermaid's width="100%" resolves against
+        // the shrink-wrapped flex parent → ~0, collapsing the diagram.
+        const cleaned = svg
+          .replace(/(<svg[^>]*?)\s(?:width|height)="[^"]*"/g, "$1")
+          .replace(/max-width:\s*[\d.]+px;?/g, "");
+        if (live) { setSvg(cleaned); continueRender(handle); }
+      })
+      .catch((e) => { if (live) { setErr(String(e?.message ?? e)); continueRender(handle); } });
+    return () => { live = false; };
+  }, [code, handle]);
+  const maxH = (caption ? 0.6 : 0.72) * height;
+  return (
+    <AbsoluteFill style={base}>
+      <Background />
+      {heading && <Heading frame={frame}>{heading}</Heading>}
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 70,
+        paddingTop: heading ? 150 : 70, flexDirection: "column" }}>
+        <div style={{ opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 28)}px)` }}>
+          {err ? (
+            <Card style={{ padding: "36px 48px", maxWidth: "84vw" }}>
+              <div style={{ fontFamily: MONO, color: C.bad, fontSize: 26, whiteSpace: "pre-wrap" }}>
+                mermaid error: {err}
+              </div>
+            </Card>
+          ) : (
+            <Card style={{ padding: 44, maxWidth: "88vw" }}>
+              <style>{`.ppv-mmd svg { display: block; margin: auto; width: auto; height: auto;
+                max-width: 100%; max-height: ${Math.round(maxH)}px; }`}</style>
+              <div className="ppv-mmd" style={{ display: "flex", justifyContent: "center",
+                width: "80vw", maxWidth: 1500 }}
+                dangerouslySetInnerHTML={{ __html: svg }} />
+            </Card>
+          )}
+        </div>
+        {caption && (
+          <div style={{ opacity: fade(frame, 24, 16), color: C.dim, fontSize: 34, marginTop: 30,
             textAlign: "center", maxWidth: 1500 }}>{caption}</div>
         )}
       </AbsoluteFill>
@@ -327,5 +419,6 @@ export const Caption: React.FC<{ text: string }> = ({ text }) => {
 
 export const REGISTRY: Record<string, React.FC<any>> = {
   title: Title, statement: Statement, bullets: Bullets, figure: Figure,
-  equation: Equation, code: Code, comparison: Comparison, stats: Stats, outro: Outro,
+  equation: Equation, code: Code, mermaid: Mermaid, comparison: Comparison,
+  stats: Stats, outro: Outro,
 };

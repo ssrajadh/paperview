@@ -42,12 +42,24 @@ COMPONENTS: dict[str, dict] = {
     },
     "code": {
         "required": ["code"],
-        "optional": ["lang", "filename", "highlightLines", "startLine", "heading", "caption"],
+        "optional": ["lang", "filename", "highlightLines", "startLine", "heading", "caption", "diff"],
         "purpose": "Source snippet in a dark editor panel (syntax-highlighted, line-numbered). "
                    "code = the snippet (keep it focused, ~6-16 lines). lang = highlight language "
                    "(e.g. python/ts/rust; omit for plain/pseudocode). filename = path shown in the "
                    "title bar. highlightLines = [int] (1-based) to emphasize lines the narration "
-                   "walks through. startLine = line number of the first line (default 1).",
+                   "walks through. startLine = line number of the first line (default 1). "
+                   "diff = true for a before/after view: prefix each line with '+'/'-'/' ' "
+                   "(unified-diff style); added lines turn green, removed red (replaces line "
+                   "numbers and highlightLines).",
+    },
+    "mermaid": {
+        "required": ["code"],
+        "optional": ["heading", "caption"],
+        "purpose": "Render a Mermaid diagram (flowchart, sequence, state, class, ER, etc.) — for "
+                   "architecture / data-flow / pipeline diagrams when no real figure exists "
+                   "(great for codebases and method overviews). code = Mermaid source (e.g. "
+                   "'graph TD; A[Input]-->B[Encoder]-->C[Output]'). Keep it focused — ~3-10 nodes "
+                   "read best at 1080p. Optional heading/caption.",
     },
     "comparison": {
         "required": ["rowLabels", "columns"],
