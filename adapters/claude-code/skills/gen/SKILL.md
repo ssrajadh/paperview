@@ -101,6 +101,9 @@ Guidance for a good plan:
   only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$` — prefer the
 verbatim strings from `$WORK/math.json`, step 3b); use
   `comparison`/`stats`/`bullets` to keep it varied. Respect the user's focus and length.
+- **Cite every reproduced figure.** When you use `figure`, set its `caption` to a source
+  attribution (e.g. *"Figure 2 — Vaswani et al., 2017"*). Papers' figures are copyrighted, so
+  they're always embedded **with credit**, never anonymously.
 - Each scene needs `narration`, a valid `component`, and that component's required props.
 
 ## 4b. Validate the plan (cheap — do this before spending TTS/render time)
