@@ -183,7 +183,10 @@ def render(plan: dict, workdir: str, out_mp4: str, concurrency: int | None = Non
     _write_manifest(work, plan, merged["meta"], durmap, result, concurrency, crf)
 
     print(f"  rendered in {wall:.1f}s  ({size/1e6:.1f} MB)")
-    print(f"  ▶ {_link(out_mp4)}   (click to play)")
+    # OSC 8 hyperlink: many terminals (GNOME Terminal, VS Code) require Ctrl/⌘-click to follow it;
+    # others (iTerm2, kitty) take a plain click. We also print the bare path so it's always usable.
+    print(f"  ▶ {_link(out_mp4)}   (Ctrl/⌘-click to play)")
+    print(f"    {out_mp4}")
     if open_after and _open_file(out_mp4):
         print("  opening in your default player…")
     return result
