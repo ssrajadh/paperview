@@ -35,10 +35,18 @@ the steps below (no `ppv parse`, no figures — see §3). Then any steering:
 Briefly state your interpretation (*"paper = X.pdf · ~2 min (8 scenes) · expert · 16:9 — generating
 now"*) before the long steps.
 
-## 2. Set up a run directory
+## 2. Set up a run directory — named for the topic, not a timestamp
+Derive a short **kebab-case slug** from the source's topic (the paper title or the codebase/project
+name, e.g. `attention-is-all-you-need`, `redis-event-loop`) — keep it lowercase, ascii, `< ~40` chars.
+Use that one slug for **both** the run directory and the final video filename so runs are
+self-describing instead of bare numbers:
 ```bash
-WORK=~/.paperview/runs/$(date +%s); mkdir -p "$WORK"
+SLUG=attention-is-all-you-need   # <- your topic slug
+WORK=~/.paperview/runs/$SLUG; [ -e "$WORK" ] && WORK="$WORK-$(date +%y%m%d-%H%M%S)"  # avoid clobber
+mkdir -p "$WORK"
 ```
+Reuse `$SLUG` when naming the MP4 in §7 (`$WORK/$SLUG.mp4`). If you can't infer a topic yet, pick the
+best guess from the request/filename now — a readable name beats a timestamp.
 
 ## 3. Parse the source
 **Paper / document source** (PDF, Markdown, text):
@@ -147,9 +155,10 @@ rendering. (Stills need only the figures in `$WORK/assets`; no TTS required.)
 
 ## 7. Render
 ```bash
-~/.paperview/venv/bin/ppv render "$WORK/plan.json" --workdir "$WORK" --out "$WORK/explainer.mp4"
+~/.paperview/venv/bin/ppv render "$WORK/plan.json" --workdir "$WORK" --out "$WORK/$SLUG.mp4"
 ```
-Defaults to **1080p @ 30fps**. Resolution is the big speed/size lever — `--resolution 810p` (or `540p`)
+Name the MP4 with the run's `$SLUG` (§2), not a generic `explainer.mp4`, so the file is
+self-describing. Defaults to **1080p @ 30fps**. Resolution is the big speed/size lever — `--resolution 810p` (or `540p`)
 renders **much** faster and smaller, and `--draft` (810p @ 24fps) is the fast-iteration preset; use it
 for previews and re-render at 1080p only for the final. **A full-length 1080p render can take tens of
 minutes** — tell the user the resolution/time tradeoff up front and prefer `--draft` while iterating.
@@ -162,8 +171,9 @@ long jobs.
 
 ## 8. Report
 Give the user the result as a **clickable link** so they don't have to hunt the filesystem —
-present the MP4 as a markdown link, e.g. `[▶ play explainer.mp4](file:///home/.../explainer.mp4)`
-(absolute `file://` path). `ppv render` also prints the path as a clickable terminal hyperlink.
+present the MP4 as a markdown link, e.g. `[▶ play attention-is-all-you-need.mp4](file:///home/.../attention-is-all-you-need.mp4)`
+(absolute `file://` path, named with the run's `$SLUG`). `ppv render` also prints the path as a
+clickable terminal hyperlink (some terminals — GNOME Terminal, VS Code — need Ctrl/⌘-click to follow it).
 **Don't auto-open it** (a player stealing focus minutes later is disruptive) — let the user click
 when ready. Also report the **render time**, scene count, and a one-line honest note on where it
 might be weak (e.g. figures that couldn't be extracted). Offer to tweak the plan and re-render.
