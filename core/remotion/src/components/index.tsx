@@ -11,18 +11,77 @@ import { Background, Card, Heading, C, FONT, MONO, fade, rise } from "../theme";
 
 // Mermaid is configured once at module load: no auto-start (we render on demand), and
 // deterministic ids so every frame/worker produces byte-identical SVG markup (a render must
-// look the same everywhere — see notes D5/D12). The `neutral` theme reads well on the white
-// Card the diagram sits on, matching the figure/equation visual language.
+// look the same everywhere — see notes D5/D12). Instead of mermaid's stock `neutral` theme on a
+// white card (which looks like a figure photocopied out of a paper — gray boxes, black arrows,
+// foreign to our dark glowy backdrops), we drive mermaid's `base` theme with our OWN palette so
+// the diagram reads as native video: deep-blue glass nodes, light text, soft edges. These colors
+// are the shared content palette (legible on all three themes), matching the design rule that
+// content colors stay constant across midnight/slate/dusk.
 mermaid.initialize({
   startOnLoad: false,
-  theme: "neutral",
+  theme: "base",
   securityLevel: "loose",
   deterministicIds: true,
   deterministicIDSeed: "paperview",
   fontFamily: FONT,
+  flowchart: { curve: "basis", nodeSpacing: 48, rankSpacing: 56, padding: 14, htmlLabels: true },
+  themeVariables: {
+    darkMode: true,
+    background: "#0d1430",
+    fontFamily: FONT,
+    fontSize: "21px",
+    // flowchart / generic nodes — deep-blue glass with a blue glow border + light label
+    primaryColor: "#1b2748",
+    primaryTextColor: C.text,
+    primaryBorderColor: C.blue,
+    secondaryColor: "#241a44",
+    secondaryTextColor: C.text,
+    secondaryBorderColor: C.purple,
+    tertiaryColor: "#13203b",
+    tertiaryTextColor: C.text,
+    tertiaryBorderColor: "rgba(255,255,255,0.22)",
+    mainBkg: "#1b2748",
+    nodeBorder: C.blue,
+    nodeTextColor: C.text,
+    textColor: C.text,
+    lineColor: C.dim,
+    titleColor: C.text,
+    // subgraph clusters — faint glass, no stark fills
+    clusterBkg: "rgba(255,255,255,0.04)",
+    clusterBorder: "rgba(255,255,255,0.18)",
+    // edge labels must not paint white boxes over a dark backdrop
+    edgeLabelBackground: "#101a36",
+    labelBackground: "#101a36",
+    // sequence diagrams
+    actorBkg: "#1b2748",
+    actorBorder: C.blue,
+    actorTextColor: C.text,
+    actorLineColor: C.dim,
+    signalColor: C.dim,
+    signalTextColor: C.text,
+    labelBoxBkgColor: "#1b2748",
+    labelBoxBorderColor: C.blue,
+    labelTextColor: C.text,
+    loopTextColor: C.text,
+    activationBkgColor: "#241a44",
+    activationBorderColor: C.purple,
+    noteBkgColor: "#241a44",
+    noteTextColor: C.text,
+    noteBorderColor: C.purple,
+  },
 });
 
 const base: React.CSSProperties = { fontFamily: FONT };
+
+// Dark translucent "glass" surface for diagrams — the dark-theme counterpart to the white Card.
+// A faint fill + hairline border + outer shadow give the panel definition over the themed
+// backdrop without the stark white-sheet look that made mermaid diagrams read as pasted figures.
+const GLASS: React.CSSProperties = {
+  background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 24, padding: 44, maxWidth: "88vw",
+  boxShadow: "0 30px 80px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.06)",
+  display: "flex", alignItems: "center", justifyContent: "center",
+};
 
 // ---------------- title ----------------
 export const Title: React.FC<any> = ({ title, subtitle }) => {
@@ -243,7 +302,8 @@ export const Code: React.FC<any> = ({ code = "", lang = "text", heading, caption
 
 // ---------------- mermaid (diagrams) ----------------
 // Render a Mermaid diagram (flowchart / sequence / state / class / ER / etc.) to SVG at render
-// time in headless Chrome, then inline it on a white Card. `code` is the Mermaid source. For
+// time in headless Chrome, then inline it on a dark glass panel themed to match the video (see
+// the mermaid.initialize palette above). `code` is the Mermaid source. For
 // architecture / data-flow / state diagrams in BOTH papers and codebases, where no real figure
 // exists to extract. delayRender holds the frame until the async render resolves; a syntax error
 // degrades to the raw source + message (one bad diagram never kills the whole render). The
@@ -280,19 +340,27 @@ export const Mermaid: React.FC<any> = ({ code = "", heading, caption }) => {
         paddingTop: heading ? 150 : 70, flexDirection: "column" }}>
         <div style={{ opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 28)}px)` }}>
           {err ? (
-            <Card style={{ padding: "36px 48px", maxWidth: "84vw" }}>
+            <div style={GLASS}>
               <div style={{ fontFamily: MONO, color: C.bad, fontSize: 26, whiteSpace: "pre-wrap" }}>
                 mermaid error: {err}
               </div>
-            </Card>
+            </div>
           ) : (
-            <Card style={{ padding: 44, maxWidth: "88vw" }}>
+            // The diagram sits on a faint dark "glass" panel (not a white card): a subtle drop
+            // shadow under each node lifts it off the backdrop so it feels lit/native, not a flat
+            // pasted figure. Edge-label boxes get the panel's tint so no white chips show through.
+            <div style={GLASS}>
               <style>{`.ppv-mmd svg { display: block; margin: auto; width: auto; height: auto;
-                max-width: 100%; max-height: ${Math.round(maxH)}px; }`}</style>
+                max-width: 100%; max-height: ${Math.round(maxH)}px; }
+                .ppv-mmd .node rect, .ppv-mmd .node circle, .ppv-mmd .node polygon,
+                .ppv-mmd .node path, .ppv-mmd .actor, .ppv-mmd .cluster rect {
+                  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.45)); }
+                .ppv-mmd .edgeLabel, .ppv-mmd .edgeLabel p { background: transparent !important;
+                  color: ${C.text} !important; }`}</style>
               <div className="ppv-mmd" style={{ display: "flex", justifyContent: "center",
                 width: "80vw", maxWidth: 1500 }}
                 dangerouslySetInnerHTML={{ __html: svg }} />
-            </Card>
+            </div>
           )}
         </div>
         {caption && (
