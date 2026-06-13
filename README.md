@@ -6,7 +6,7 @@ and Mermaid diagrams rendered with code), not generative video. Runs **locally**
 (Kokoro; or ElevenLabs for a cloud upgrade), local render (Remotion). No API keys for the heavy
 lifting; the planning/composition is done by the coding agent you already use.
 
-> Status: **v1.** Claude Code adapter only.
+> Status: **v0.1** (early — first public release). Claude Code adapter only.
 
 ## Layout
 
