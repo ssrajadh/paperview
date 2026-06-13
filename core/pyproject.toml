@@ -1,7 +1,7 @@
 [project]
 name = "paperview"
 version = "0.1.0"
-description = "Turn a research paper PDF into a narrated, animated explainer video (deterministic, local)."
+description = "Turn a research paper PDF (or a codebase) into a narrated, animated explainer video (deterministic, local)."
 requires-python = ">=3.10"
 dependencies = [
     "pymupdf>=1.24",
@@ -9,11 +9,6 @@ dependencies = [
     "soundfile>=0.12",
     "numpy>=1.24",
 ]
-
-# Kokoro (local) is the default and ships above. ElevenLabs is an optional cloud upgrade
-# (see ppv/providers.py): pip install 'paperview[elevenlabs]'  (needs ELEVENLABS_API_KEY).
-[project.optional-dependencies]
-elevenlabs = ["elevenlabs>=1.0"]
 
 [project.scripts]
 ppv = "ppv.cli:main"
