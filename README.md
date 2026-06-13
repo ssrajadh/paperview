@@ -31,18 +31,39 @@ The **agent** (Claude Code) parses your request, looks at the extracted figures,
 deterministic parts: PDF parsing, TTS, and rendering the scene plan through a fixed library of
 animated React components.
 
-## Quickstart (local dev)
+## Quickstart
+
+Prerequisites: [Claude Code](https://claude.com/claude-code), plus `git`, `python3`, `node`/`npm`,
+and `ffmpeg` on your `PATH`. `/ppv:setup` installs everything else (Python venv, Remotion deps,
+local models — and on Linux the headless-Chrome system libs the render needs).
+
+Run these inside an interactive Claude Code session:
 
 ```bash
-# 1. load the plugin from this repo (no install/marketplace needed)
-claude --plugin-dir ./adapters/claude-code
+# 1. add the marketplace + install the plugin (one time)
+/plugin marketplace add ssrajadh/paperview
+/plugin install ppv@paperview
 
 # 2. one-time toolchain bootstrap
 /ppv:setup
 
-# 3. make a video
+# 3a. make a video from a paper PDF
+/ppv:gen ~/Downloads/attention_is_all_you_need.pdf, 3 minutes, focus on attention
+
+# 3b. ...or from a codebase / GitHub URL (it clones the repo for you)
+/ppv:gen https://github.com/owner/repo, 2 minutes, focus on the architecture
+```
+
+<details>
+<summary>Contributor / local-dev install (run straight from a clone, no marketplace)</summary>
+
+```bash
+git clone https://github.com/ssrajadh/paperview && cd paperview
+claude --plugin-dir ./adapters/claude-code   # load the plugin from the working tree
+/ppv:setup
 /ppv:gen ~/Downloads/attention_is_all_you_need.pdf, 3 minutes, focus on attention
 ```
+</details>
 
 ## CLI (what the agent drives)
 
