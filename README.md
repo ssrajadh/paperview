@@ -45,6 +45,7 @@ Run these inside an interactive Claude Code session:
 # 1. add the marketplace + install the plugin (one time)
 /plugin marketplace add ssrajadh/paperview
 /plugin install ppv@paperview
+/reload-plugins                # activate the freshly installed /ppv: skills
 
 # 2. one-time toolchain bootstrap
 /ppv:setup
@@ -55,6 +56,10 @@ Run these inside an interactive Claude Code session:
 # 3b. ...or from a codebase / GitHub URL (it clones the repo for you)
 /ppv:gen https://github.com/owner/repo, 2 minutes, focus on the architecture
 ```
+
+To update later, refresh the marketplace and reload — `/plugin marketplace update paperview`
+then `/reload-plugins` (pulls the latest plugin; re-run `/ppv:setup` if a release changes the
+toolchain).
 
 <details>
 <summary>Contributor / local-dev install (run straight from a clone, no marketplace)</summary>
