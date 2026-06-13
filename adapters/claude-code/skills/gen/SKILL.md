@@ -11,7 +11,9 @@ You are the *planner/composer*. You parse the request, read the source (a resear
 codebase), author a **scene plan**, and drive the deterministic `ppv` CLI (parse → TTS → render).
 The CLI does the mechanical work; your job is the script and the visual choices.
 
-`ppv` lives at `~/.paperview/venv/bin/ppv` (run `/ppv:setup` first if it's missing).
+`ppv` lives at `~/.paperview/venv/bin/ppv`. **Pre-flight: if that binary doesn't exist, the
+toolchain isn't installed — tell the user to run `/ppv:setup` first, then stop.** Don't attempt to
+parse / tts / render without it (you'll just get `No such file or directory`).
 
 ## 1. Parse the request, then echo it back
 From `$ARGUMENTS` extract: the **source** — a **PDF**, a **text/Markdown** file, or a **codebase**
@@ -156,11 +158,13 @@ exist. Fix anything it flags, then proceed.
 A full render takes minutes; a still takes seconds. Spot-check dense scenes (equations, long text,
 figures) for overflow/clipping first:
 ```bash
-~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --scene 7   # one scene -> PNG
-~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --all       # every scene
+~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --scene 7   # -> $WORK/preview_scene7.png
+~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --all       # -> $WORK/preview/scene<id>.png (one per scene)
 ```
-**Read the PNG(s)** with the Read tool and fix any clipped/overflowing scenes in the plan before
-rendering. (Stills need only the figures in `$WORK/assets`; no TTS required.)
+`ppv preview` prints each PNG's exact path as it writes it — **Read those paths** with the Read tool
+(note: a single `--scene` lands at `$WORK/preview_scene<n>.png`, but `--all` writes into the
+`$WORK/preview/` subdirectory). Fix any clipped/overflowing scenes in the plan before rendering.
+(Stills need only the figures in `$WORK/assets`; no TTS required.)
 
 ## 7. Render
 **Run the render in the background — do not block on it in the foreground.** A foreground command is
