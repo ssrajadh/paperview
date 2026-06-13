@@ -163,20 +163,26 @@ figures) for overflow/clipping first:
 rendering. (Stills need only the figures in `$WORK/assets`; no TTS required.)
 
 ## 7. Render
+**Run the render in the background — do not block on it in the foreground.** A foreground command is
+killed at the ~10-minute tool limit, but a full render routinely runs longer: measured at ~4–5× the
+video length on a RAM-limited box, so even a ~2-minute video approaches the cap and a 3-minute one
+blows past it (the render itself is fine — it's the foreground wait that gets killed mid-render).
+So start it with your tool's **background execution**, tell the user it's rendering with a rough ETA
+(≈5× the narration length on modest hardware, less on a fast machine), poll until it finishes, then
+report (§8):
 ```bash
-~/.paperview/venv/bin/ppv render "$WORK/plan.json" --workdir "$WORK" --out "$WORK/$SLUG.mp4"
+~/.paperview/venv/bin/ppv render "$WORK/plan.json" --workdir "$WORK" --out "$WORK/$SLUG.mp4" --progress
 ```
 Name the MP4 with the run's `$SLUG` (§2), not a generic `explainer.mp4`, so the file is
 self-describing. Defaults to **1080p @ 30fps**. Resolution is the big speed/size lever — `--resolution 810p` (or `540p`)
 renders **much** faster and smaller, and `--draft` (810p @ 24fps) is the fast-iteration preset; use it
-for previews and re-render at 1080p only for the final. **A full-length 1080p render can take tens of
-minutes** — tell the user the resolution/time tradeoff up front and prefer `--draft` while iterating.
+for previews and re-render at 1080p only for the final.
 `--crf N` (higher = smaller file) trims size without dropping resolution. `--captions` burns the
 narration in as subtitles (default off; use it when the user asks for captions/subtitles or an
 accessible cut). The backdrop palette normally comes from `meta.theme` (you set it in §4); `--theme midnight|slate|dusk`
 is only an override for when the user explicitly asks for a different look mid-render. Concurrency is
-auto-detected from cores + free RAM. The render is quiet — add `--progress` and/or background it for
-long jobs.
+auto-detected from cores + free RAM. `--progress` (above) surfaces Remotion's progress bar while the
+job runs in the background.
 
 ## 8. Report
 Give the user the result as a **clickable link** so they don't have to hunt the filesystem —
