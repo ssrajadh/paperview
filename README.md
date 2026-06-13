@@ -56,3 +56,19 @@ ppv render <scenes.json> --workdir <dir> --out <mp4> [--resolution 810p|540p] [-
 
 Run `ppv components` for the component library and `ppv schema` for the full plan JSON Schema
 (`ppv tts --list-voices` lists the narration voices).
+
+## License
+
+PaperView itself is licensed under **Apache-2.0** (see [LICENSE](LICENSE)).
+
+It builds on third-party tools that carry their **own** licenses, which govern what you may do
+with the rendered pipeline — read them before any commercial or at-scale use:
+
+- **Remotion** (rendering) is *source-available, not classic OSS*: free for individuals and small
+  teams, but companies above its size threshold need a paid license, and there are restrictions on
+  building competing products. See https://remotion.dev/license — PaperView's Apache-2.0 grant does
+  **not** override these terms.
+- **PyMuPDF** (PDF parsing) is **AGPL-3.0** (or a commercial license from Artifex). You install it as
+  a dependency; obligations attach to anyone who redistributes a combined work.
+- **Kokoro** (default local TTS) ships Apache-2.0 weights. ElevenLabs (optional cloud upgrade) is a
+  paid API under its own terms.
