@@ -1,18 +1,16 @@
-"""TTS providers: a uniform synth interface over local + cloud engines.
+"""TTS providers: a uniform synth interface over one or more engines.
 
 Each provider adapts one engine to `render(text, voice, speed, path)`, writing a single WAV.
-Kokoro (local, ONNX, 82M) is the default — best naturalness for the footprint. ElevenLabs
-(cloud, paid, BYO key) is the "sounds human" upgrade.
+Kokoro (local, ONNX, 82M) is the default and only built-in — best naturalness for the footprint.
 
-Heavy deps (onnx runtimes, http clients, numpy) import lazily inside `render`, so non-TTS
-commands — and an all-cache-hit `tts` run — never load an engine. Provider *metadata* (the
-class attributes below) stays import-light so `schema.py` can validate plans cheaply.
+Heavy deps (onnx runtime, numpy) import lazily inside `render`, so non-TTS commands — and an
+all-cache-hit `tts` run — never load an engine. Provider *metadata* (the class attributes below)
+stays import-light so `schema.py` can validate plans cheaply.
 
-Add a provider by subclassing TTSProvider and listing it in `_REGISTRY`.
+Add a provider (local or cloud) by subclassing TTSProvider and listing it in `_REGISTRY`.
 """
 from __future__ import annotations
 
-import os
 import urllib.request
 from pathlib import Path
 
@@ -102,50 +100,8 @@ class KokoroProvider(TTSProvider):
         sf.write(path, np.asarray(samples).squeeze(), sr)
 
 
-class ElevenLabsProvider(TTSProvider):
-    id = "elevenlabs"
-    label = "ElevenLabs (cloud, paid, BYO key) — most natural; set ELEVENLABS_API_KEY"
-    pip = "elevenlabs"
-    is_local = False
-    requires_api_key = True
-    api_key_env = "ELEVENLABS_API_KEY"
-    validate_voice = False           # voices are account-specific; accept any voice id
-    default_voice = "21m00Tcm4TlvDq8ikWAM"  # "Rachel", a stock voice on every account
-    model = "eleven_multilingual_v2"
-    # Request raw PCM (not mp3) so decoding needs no extra codec — 24 kHz is on every tier.
-    sample_rate = 24000
-
-    def __init__(self) -> None:
-        self._client = None
-
-    def version(self) -> str:
-        # the model id changes the audio (and the bill) -> part of the cache key
-        return f"{_pkg_version('elevenlabs')}/{self.model}"
-
-    def _client_(self):
-        if self._client is None:
-            key = os.environ.get(self.api_key_env)
-            if not key:
-                raise RuntimeError(
-                    f"the '{self.id}' provider needs an API key — set {self.api_key_env}")
-            from elevenlabs.client import ElevenLabs
-            self._client = ElevenLabs(api_key=key)
-        return self._client
-
-    def render(self, text, voice, speed, path):
-        import numpy as np
-        import soundfile as sf
-        audio = self._client_().text_to_speech.convert(
-            voice_id=voice, model_id=self.model, text=text,
-            output_format=f"pcm_{self.sample_rate}",
-        )
-        raw = audio if isinstance(audio, (bytes, bytearray)) else b"".join(audio)
-        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-        sf.write(path, samples, self.sample_rate)
-
-
 _REGISTRY: dict[str, type[TTSProvider]] = {
-    p.id: p for p in (KokoroProvider, ElevenLabsProvider)
+    p.id: p for p in (KokoroProvider,)
 }
 DEFAULT_PROVIDER = KokoroProvider.id
 
