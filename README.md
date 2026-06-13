@@ -3,8 +3,8 @@
 Turn a research-paper PDF — **or a codebase** — into a narrated, animated explainer video, using
 **deterministic rendering** (real typeset math, the paper's real figures, syntax-highlighted code,
 and Mermaid diagrams rendered with code), not generative video. Runs **locally**: local TTS
-(Kokoro; or ElevenLabs for a cloud upgrade), local render (Remotion). No API keys for the heavy
-lifting; the planning/composition is done by the coding agent you already use.
+(Kokoro), local render (Remotion). No API keys for the heavy lifting; the planning/composition is
+done by the coding agent you already use.
 
 > Status: **v0.1** (early — first public release). Claude Code adapter only.
 
@@ -22,14 +22,16 @@ examples/              sample scene plans / outputs
 ## How it works
 
 ```
-PDF ──ppv parse──▶ text + figures ──[agent writes scene plan]──▶ scenes.json
-        ──ppv tts──▶ audio + durations ──ppv render──▶ explainer.mp4
+PDF / codebase ──parse or read──▶ text, figures, or source ──[agent writes scene plan]──▶ plan.json
+                  ──ppv tts──▶ audio + durations ──ppv render──▶ <topic>.mp4
 ```
 
-The **agent** (Claude Code) parses your request, looks at the extracted figures, and authors a
-**scene plan** (narration + which visual component + props per scene). The **`ppv` CLI** does the
+The **agent** (Claude Code) parses your request and reads the source — a paper's text and extracted
+figures, or a codebase's source (cloned for you if you pass a GitHub URL) — then authors a **scene
+plan** (narration + which visual component + props per scene). The **`ppv` CLI** does the
 deterministic parts: PDF parsing, TTS, and rendering the scene plan through a fixed library of
-animated React components.
+animated React components. The output is named for the topic and lands in its own run directory
+under `~/.paperview/runs/`.
 
 ## Quickstart
 
@@ -91,5 +93,4 @@ with the rendered pipeline — read them before any commercial or at-scale use:
   **not** override these terms.
 - **PyMuPDF** (PDF parsing) is **AGPL-3.0** (or a commercial license from Artifex). You install it as
   a dependency; obligations attach to anyone who redistributes a combined work.
-- **Kokoro** (default local TTS) ships Apache-2.0 weights. ElevenLabs (optional cloud upgrade) is a
-  paid API under its own terms.
+- **Kokoro** (local TTS) ships Apache-2.0 weights.
