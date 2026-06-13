@@ -15,7 +15,8 @@ The CLI does the mechanical work; your job is the script and the visual choices.
 
 ## 1. Parse the request, then echo it back
 From `$ARGUMENTS` extract: the **source** — a **PDF**, a **text/Markdown** file, or a **codebase**
-(a repo/directory, a set of source files, or a "explain project X" topic) — resolve `~`, relative
+(a local repo/directory, a set of source files, a **remote git URL** like
+`https://github.com/owner/repo`, or a "explain project X" topic) — resolve `~`, relative
 paths; if missing or ambiguous, **ask — don't guess**. A codebase takes a different path through
 the steps below (no `ppv parse`, no figures — see §3). Then any steering:
 - **length / duration** — a target time (e.g. *"2 minutes"*, *"~5 min"*) → target scene count at
@@ -59,8 +60,16 @@ text) and **view every figure** in `$WORK/assets/` with the Read tool — you mu
 figure actually depicts before you reference it. (A text source with no images yields no figures —
 that's fine; lean on `equation`/`bullets`/`statement`/`comparison` instead.)
 
-**Codebase source** (a repo/directory or set of files): **skip `ppv parse` entirely** — there's no
-document to extract. Instead **read the code directly with your own tools**: start at the entry
+**Codebase source** (a local repo/directory, a set of files, or a **remote git URL**): **skip
+`ppv parse` entirely** — there's no document to extract. If the source is a remote git URL (e.g.
+`https://github.com/owner/repo`, a `*.git` URL, or `git@…`), **shallow-clone it into the run dir
+first** and treat that clone as the codebase:
+```bash
+git clone --depth 1 "<url>" "$WORK/repo"   # add `--branch <ref>` if the user named a branch/tag
+```
+(If the URL points at a subpath — `…/tree/main/pkg/x` — clone the repo *root*, then focus on that
+subdir. If the clone fails, e.g. a private repo, tell the user and ask them to clone it locally and
+pass the path.) Then **read the code directly with your own tools**: start at the entry
 points and README, map the architecture (modules, data flow, key abstractions), then open the few
 functions/types that carry the core idea. There are no extracted figures, so the visual load falls
 on `mermaid` (architecture/flow/sequence diagrams), `code` (real snippets — paste actual source,
