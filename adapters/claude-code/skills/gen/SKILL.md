@@ -78,6 +78,11 @@ on `mermaid` (architecture/flow/sequence diagrams), `code` (real snippets — pa
 set `lang`, use `highlightLines` or `diff` mode), `bullets`, and `comparison`. Skip §3b (no
 equations). Then go straight to §4 and author the plan grounded in the code you actually read — the
 same faithfulness bar applies (don't describe functions/behavior the code doesn't have).
+**Read past the README.** A codebase has no `parse.json`/figures to keep you honest, so it's on you:
+open the real entry points and core modules, and anchor every concrete claim to a file you actually
+read (any `code` scene must paste real source, not reconstructed-from-memory source). Naming the
+specific files/functions in your narration is good — it's both more credible and a check on yourself.
+If you only skimmed the README, keep the claims high-level rather than inventing internals.
 
 ## 3b. Extract the paper's real equations (arXiv) — don't typeset math from memory
 Reconstructing equations from your own recall of the paper is the validated #1 faithfulness risk.
@@ -128,6 +133,12 @@ Guidance for a good plan:
     k→"kay", x→"eks", w→"double-u", y→"why", h→"aitch" (others mostly read fine). E.g.
     *"the query vector cue and the key vector kay"*. `ppv validate` warns on lone letters (except
     a/A/I, which collide with articles — handle those yourself).
+  - **`narration` is spoken-only — it is NOT what's shown on screen.** On-screen text comes from the
+    component props (`title`, `text`, `tex`, `items`, …), which are independent fields. So spell
+    acronyms/units/symbols out phonetically in `narration` for the voice (*"Ay through Eff"*, *"five
+    kilograms"*) while the prop keeps the clean display form (*"A–F"*, *"5 kg"*) — you get correct
+    audio AND correct visuals, no tradeoff. (Caveat: with `meta.captions` on, narration also becomes
+    the subtitle text, so there keep it readable.)
 - **Visuals:** pick the component that best fits each beat — don't force a template. Use `figure`
   only with real extracted filenames; use `equation` for math (LaTeX in `tex`, no `$` — prefer the
   verbatim strings from `$WORK/math.json`, step 3b); use `mermaid` for an architecture / data-flow /
@@ -154,9 +165,11 @@ exist. Fix anything it flags, then proceed.
 ```
 (`ppv tts --list-voices` lists the presets if the user asked for a specific voice.)
 
-## 6. (Recommended) cheap visual check before the full render
-A full render takes minutes; a still takes seconds. Spot-check dense scenes (equations, long text,
-figures) for overflow/clipping first:
+## 6. Cheap visual check before the full render — don't skip this
+A full render takes minutes; a still takes seconds, and clipped/overflowing scenes don't show up
+until you look. **Default to previewing with `--all` before every real render** — skipping it is
+how layout bugs ship. Spot-check dense scenes (equations, long text, figures) for overflow/clipping
+first:
 ```bash
 ~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --scene 7   # -> $WORK/preview_scene7.png
 ~/.paperview/venv/bin/ppv preview "$WORK/plan.json" --workdir "$WORK" --all       # -> $WORK/preview/scene<id>.png (one per scene)
