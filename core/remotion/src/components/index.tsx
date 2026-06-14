@@ -331,13 +331,16 @@ export const Mermaid: React.FC<any> = ({ code = "", heading, caption }) => {
       .catch((e) => { if (live) { setErr(String(e?.message ?? e)); continueRender(handle); } });
     return () => { live = false; };
   }, [code, handle]);
-  const maxH = (caption ? 0.6 : 0.72) * height;
+  // Fill the frame: diagrams are usually height-bound (tall flow/sequence graphs leave the sides
+  // empty), so give them most of the vertical space and a near-full-width panel — the SVG scales to
+  // fit this box, so a bigger box is the only real lever on node/text size at 1080p.
+  const maxH = (caption ? 0.68 : 0.82) * height;
   return (
     <AbsoluteFill style={base}>
       <Background />
       {heading && <Heading frame={frame}>{heading}</Heading>}
-      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 70,
-        paddingTop: heading ? 150 : 70, flexDirection: "column" }}>
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 48,
+        paddingTop: heading ? 120 : 48, flexDirection: "column" }}>
         <div style={{ opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 28)}px)` }}>
           {err ? (
             <div style={GLASS}>
@@ -349,7 +352,7 @@ export const Mermaid: React.FC<any> = ({ code = "", heading, caption }) => {
             // The diagram sits on a faint dark "glass" panel (not a white card): a subtle drop
             // shadow under each node lifts it off the backdrop so it feels lit/native, not a flat
             // pasted figure. Edge-label boxes get the panel's tint so no white chips show through.
-            <div style={GLASS}>
+            <div style={{ ...GLASS, padding: 32, maxWidth: "95vw" }}>
               <style>{`.ppv-mmd svg { display: block; margin: auto; width: auto; height: auto;
                 max-width: 100%; max-height: ${Math.round(maxH)}px; }
                 .ppv-mmd .node rect, .ppv-mmd .node circle, .ppv-mmd .node polygon,
@@ -358,7 +361,7 @@ export const Mermaid: React.FC<any> = ({ code = "", heading, caption }) => {
                 .ppv-mmd .edgeLabel, .ppv-mmd .edgeLabel p { background: transparent !important;
                   color: ${C.text} !important; }`}</style>
               <div className="ppv-mmd" style={{ display: "flex", justifyContent: "center",
-                width: "80vw", maxWidth: 1500 }}
+                width: "92vw", maxWidth: 1780 }}
                 dangerouslySetInnerHTML={{ __html: svg }} />
             </div>
           )}
