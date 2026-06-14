@@ -78,11 +78,11 @@ on `mermaid` (architecture/flow/sequence diagrams), `code` (real snippets — pa
 set `lang`, use `highlightLines` or `diff` mode), `bullets`, and `comparison`. Skip §3b (no
 equations). Then go straight to §4 and author the plan grounded in the code you actually read — the
 same faithfulness bar applies (don't describe functions/behavior the code doesn't have).
-**Read past the README.** A codebase has no `parse.json`/figures to keep you honest, so it's on you:
-open the real entry points and core modules, and anchor every concrete claim to a file you actually
-read (any `code` scene must paste real source, not reconstructed-from-memory source). Naming the
-specific files/functions in your narration is good — it's both more credible and a check on yourself.
-If you only skimmed the README, keep the claims high-level rather than inventing internals.
+**Read past the README, and paste real source.** Open the real entry points and core modules — a
+`code` scene's snippet must be source you actually read (the panel shows its `filename`, so it has
+to be real), not reconstructed from memory. The same goes for the claims in `mermaid`/`bullets`/
+`statement` scenes, which have no filename bar to anchor them: describe only structure you actually
+traced. If you only skimmed the README, keep claims high-level rather than inventing internals.
 
 ## 3b. Extract the paper's real equations (arXiv) — don't typeset math from memory
 Reconstructing equations from your own recall of the paper is the validated #1 faithfulness risk.
