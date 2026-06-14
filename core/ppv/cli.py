@@ -103,15 +103,16 @@ def cmd_cache(args) -> int:
 
 
 def _check(plan: dict, assets_dir=None) -> int:
-    """Normalize, validate (fatal), then lint (warn). Return 0 if usable, 2 if invalid."""
+    """Normalize, validate (fatal), and lint (warn). Lint runs even when validation fails, so a
+    mistyped prop name surfaces both the fatal "missing required prop" and the "did you mean" hint
+    in one pass. Return 0 if usable, 2 if invalid."""
     schema.normalize(plan)
     errs = schema.validate(plan)
     if errs:
         print("invalid scene plan:\n  " + "\n  ".join(errs), file=sys.stderr)
-        return 2
     for w in schema.lint(plan, assets_dir=assets_dir):
         print(f"  ⚠ {w}", file=sys.stderr)
-    return 0
+    return 2 if errs else 0
 
 
 def cmd_validate(args) -> int:

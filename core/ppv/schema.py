@@ -183,6 +183,7 @@ def lint(plan: dict, assets_dir=None) -> list[str]:
     """Return non-fatal warnings (empty == clean). Catches things that render/synth
     fine but produce bad *output*: TTS-hostile symbols in narration (mangled audio)
     and, if `assets_dir` is given, `figure` srcs that don't exist on disk."""
+    import difflib
     import re
     from pathlib import Path
     warnings: list[str] = []
@@ -193,6 +194,21 @@ def lint(plan: dict, assets_dir=None) -> list[str]:
         if not isinstance(s, dict):
             continue
         where = f"scenes[{i}]"
+        # Unknown prop names are a top first-try mistake (e.g. `text`/`subtext`/`diagram` instead of
+        # `title`/`subtitle`/`code`). A wrong *required* name already errors in validate() as a
+        # missing prop; this connects that to what was actually typed, and surfaces wrong *optional*
+        # names that would otherwise be silently dropped. Suggest the nearest valid prop, else list them.
+        comp = s.get("component")
+        spec = COMPONENTS.get(comp)
+        props = s.get("props")
+        if spec and isinstance(props, dict):
+            valid = list(spec["required"]) + list(spec["optional"])
+            for key in props:
+                if key not in valid:
+                    near = difflib.get_close_matches(key, valid, n=1, cutoff=0.6)
+                    hint = (f" — did you mean '{near[0]}'?" if near
+                            else f" (valid: {', '.join(valid)})")
+                    warnings.append(f"{where} (component '{comp}') unknown prop '{key}'{hint}")
         text = s.get("narration", "")
         if isinstance(text, str):
             bad = sorted({c for c in text if c in _TTS_HOSTILE})
