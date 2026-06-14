@@ -30,6 +30,29 @@ echo "  repo: $REPO"
 echo "  home: $PPV_HOME"
 mkdir -p "$PPV_HOME"
 
+echo "[0/6] prerequisites"
+# Tools setup itself needs: git, python3 (for the venv), node/npm (for Remotion). Auto-install on
+# Linux/apt; otherwise (macOS, or no root) halt with one clear remediation line instead of a
+# confusing traceback three steps in — a fresh Mac with no Node was a launch blocker.
+need=""
+command -v git     >/dev/null 2>&1 || need="$need git"
+command -v python3 >/dev/null 2>&1 || need="$need python3"
+command -v node    >/dev/null 2>&1 || need="$need nodejs"
+command -v npm     >/dev/null 2>&1 || need="$need npm"
+if [ -n "$need" ]; then
+  echo "  missing:$need — attempting install…"
+  apt_install $need || true
+fi
+miss=""
+for c in git python3 node npm; do command -v "$c" >/dev/null 2>&1 || miss="$miss $c"; done
+if [ -n "$miss" ]; then
+  echo "  ✗ required tools still missing:$miss — install them, then re-run setup:"
+  echo "      macOS:          brew install git python node     (or get Node from https://nodejs.org)"
+  echo "      Debian/Ubuntu:  sudo apt-get install -y git python3 python3-venv nodejs npm"
+  exit 1
+fi
+echo "  ✓ git, python3, node, npm present"
+
 echo "[1/6] python venv + ppv package"
 # Guard on the venv's pip, not just the directory: a half-created venv from a failed earlier run
 # leaves the dir behind but no bin/pip, so a dir-only guard ([ -d ]) would skip the rebuild and then
