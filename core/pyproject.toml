@@ -8,6 +8,7 @@ dependencies = [
     "kokoro-onnx>=0.4",
     "soundfile>=0.12",
     "numpy>=1.24",
+    "certifi",          # CA bundle for model downloads — avoids the python.org-Python SSL trap
 ]
 
 [project.scripts]

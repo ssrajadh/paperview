@@ -16,12 +16,22 @@ from pathlib import Path
 
 
 def _download(url: str, dest: Path) -> None:
-    """Fetch `url` to `dest` once (skip if present), via an atomic temp-rename."""
+    """Fetch `url` to `dest` once (skip if present), via an atomic temp-rename. Verifies TLS against
+    certifi's CA bundle instead of the system store: a Python from the python.org macOS installer
+    ships without its certs wired up, so a plain urllib fetch dies with
+    `SSL: CERTIFICATE_VERIFY_FAILED` until the user manually runs 'Install Certificates.command'.
+    Going through certifi sidesteps that trap on every platform."""
     if dest.exists():
         return
+    import shutil
+    import ssl
+    import certifi
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
-    urllib.request.urlretrieve(url, tmp)
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    req = urllib.request.Request(url, headers={"User-Agent": "paperview"})
+    with urllib.request.urlopen(req, context=ctx) as r, open(tmp, "wb") as f:
+        shutil.copyfileobj(r, f)
     tmp.rename(dest)
 
 
