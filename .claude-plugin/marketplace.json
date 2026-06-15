@@ -1,6 +1,9 @@
 {
   "name": "paperview",
   "owner": { "name": "Soham" },
+  "metadata": {
+    "description": "PaperView — narrated, animated explainer videos generated locally from research papers or codebases."
+  },
   "plugins": [
     {
       "name": "ppv",
