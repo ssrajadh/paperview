@@ -16,10 +16,11 @@ toolchain isn't installed — tell the user to run `/ppv:setup` first, then stop
 parse / tts / render without it (you'll just get `No such file or directory`).
 
 ## 1. Parse the request, then echo it back
-From `$ARGUMENTS` extract: the **source** — a **PDF**, a **text/Markdown** file, or a **codebase**
-(a local repo/directory, a set of source files, a **remote git URL** like
-`https://github.com/owner/repo`, or a "explain project X" topic) — resolve `~`, relative
-paths; if missing or ambiguous, **ask — don't guess**. A codebase takes a different path through
+From `$ARGUMENTS` extract: the **source** — a **PDF** (a local path, or an **arXiv id / URL** like
+`2310.06825` or `arxiv.org/abs/2310.06825`, which is downloaded for you — see §3), a
+**text/Markdown** file, or a **codebase** (a local repo/directory, a set of source files, a
+**remote git URL** like `https://github.com/owner/repo`, or a "explain project X" topic) — resolve
+`~`, relative paths; if missing or ambiguous, **ask — don't guess**. A codebase takes a different path through
 the steps below (no `ppv parse`, no figures — see §3). Then any steering:
 - **length / duration** — a target time (e.g. *"2 minutes"*, *"~5 min"*) → target scene count at
   ~1 scene per 12–15s (default 10–12 scenes ≈ 3 min) **and** a per-scene narration word budget
@@ -52,6 +53,17 @@ Reuse `$SLUG` when naming the MP4 in §7 (`$WORK/$SLUG.mp4`). If you can't infer
 best guess from the request/filename now — a readable name beats a timestamp.
 
 ## 3. Parse the source
+**arXiv id / URL?** `ppv parse` needs a local file, so download the PDF into the run dir first, then
+parse that (the same way a codebase URL is cloned, below). Extract the id (`NNNN.NNNNN`) from the
+id or any `arxiv.org/abs|pdf|…` URL:
+```bash
+ARXIV=2310.06825    # <- the id you extracted
+curl -fsSL "https://arxiv.org/pdf/$ARXIV" -o "$WORK/paper.pdf"   # arXiv serves the PDF here
+```
+Then parse `"$WORK/paper.pdf"` as a normal PDF below, **and** run §3b's `ppv math` on the same id for
+verbatim equations. (If the download fails — withdrawn/again-only paper — tell the user and ask for a
+local PDF.)
+
 **Paper / document source** (PDF, Markdown, text):
 ```bash
 ~/.paperview/venv/bin/ppv parse "<source>" --out "$WORK"   # PDF, Markdown, or text

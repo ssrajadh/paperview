@@ -27,8 +27,9 @@ PDF / codebase ──parse or read──▶ text, figures, or source ──[agen
 ```
 
 The **agent** (Claude Code) parses your request and reads the source — a paper's text and extracted
-figures, or a codebase's source (cloned for you if you pass a GitHub URL) — then authors a **scene
-plan** (narration + which visual component + props per scene). The **`ppv` CLI** does the
+figures (the PDF is downloaded for you from an arXiv id/link, with real equations pulled from its
+LaTeX), or a codebase's source (cloned for you from a GitHub URL) — then authors a **scene plan**
+(narration + which visual component + props per scene). The **`ppv` CLI** does the
 deterministic parts: PDF parsing, TTS, and rendering the scene plan through a fixed library of
 animated React components. The output is named for the topic and lands in its own run directory
 under `~/.paperview/runs/`.
@@ -50,10 +51,13 @@ Run these inside an interactive Claude Code session:
 # 2. one-time toolchain bootstrap
 /ppv:setup
 
-# 3a. make a video from a paper PDF
+# 3a. make a video from a paper — a local PDF...
 /ppv:gen ~/Downloads/attention_is_all_you_need.pdf, 3 minutes, focus on attention
 
-# 3b. ...or from a codebase / GitHub URL (it clones the repo for you)
+# 3b. ...or an arXiv id / link (the PDF is downloaded for you; equations pulled from the LaTeX)
+/ppv:gen arxiv.org/abs/1706.03762, 3 minutes, expert
+
+# 3c. ...or from a codebase / GitHub URL (it clones the repo for you)
 /ppv:gen https://github.com/owner/repo, 2 minutes, focus on the architecture
 ```
 

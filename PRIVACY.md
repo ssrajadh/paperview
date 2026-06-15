@@ -25,7 +25,8 @@ PaperView makes outbound network requests only to **fetch public resources you'v
   Remotion's headless browser, and Python/Node packages) from their official sources
   (e.g. GitHub, PyPI, npm).
 - When you pass a **GitHub URL**, it clones that public repository to your local machine.
-- When you reference an **arXiv paper**, it fetches that paper's public LaTeX source from arXiv.
+- When you reference an **arXiv paper**, it fetches that paper's public PDF and/or LaTeX source
+  from arXiv.
 
 These requests fetch data **to** your machine; they do not send your personal data anywhere.
 
