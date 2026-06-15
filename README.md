@@ -99,3 +99,6 @@ with the rendered pipeline — read them before any commercial or at-scale use:
 - **PyMuPDF** (PDF parsing) is **AGPL-3.0** (or a commercial license from Artifex). You install it as
   a dependency; obligations attach to anyone who redistributes a combined work.
 - **Kokoro** (local TTS) ships Apache-2.0 weights.
+
+**Privacy:** PaperView runs entirely locally and collects no data — no analytics, telemetry, or
+phone-home. See [PRIVACY.md](PRIVACY.md).
