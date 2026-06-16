@@ -22,3 +22,6 @@ runs/
 
 # local-only planning notes (not published)
 notes/
+
+# collected demo videos (hosted on YouTube, not in-repo)
+demos/
