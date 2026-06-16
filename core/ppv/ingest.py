@@ -135,7 +135,7 @@ def _table_region_from_text(blocks: list, cap, pr, max_gap: float = 26.0) -> lis
     return region
 
 
-def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 2.0) -> list[dict]:
+def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 4.0) -> list[dict]:
     """Caption-anchored clip-render. Cluster the page's drawn content + images into figure
     regions, assign each figure/table caption to the nearest region on the expected side
     (above for figures, below for tables), and rasterize it — capturing vector figures (and
@@ -201,7 +201,7 @@ def _clip_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float
     return figures
 
 
-def _embedded_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 2.0) -> list[dict]:
+def _embedded_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: float = 4.0) -> list[dict]:
     """Fallback for caption-less pages: clip-render *clustered* embedded-image regions, so a
     diagram split into many small images becomes one figure rather than dozens of fragments."""
     import fitz
@@ -228,7 +228,7 @@ def _embedded_figures(page, page_no: int, assets: Path, min_fig_px: int, zoom: f
     return figures
 
 
-def parse(pdf_path: str, out_dir: str, min_fig_px: int = 80) -> dict:
+def parse(pdf_path: str, out_dir: str, min_fig_px: int = 160) -> dict:
     import fitz  # PyMuPDF — lazy so text-only sources don't load it
 
     pdf_path = str(Path(pdf_path).expanduser())

@@ -152,25 +152,28 @@ export const Bullets: React.FC<any> = ({ heading, items = [] }) => {
 export const Figure: React.FC<any> = ({ src, caption, label }) => {
   const frame = useCurrentFrame();
   const { height } = useVideoConfig();
-  const imgH = (caption ? 0.62 : 0.7) * height;
+  // reserve vertical room for the label (its own row above) and caption (below) so the image
+  // never overlaps either — the label is a separate chip, not an overlay drawn on the figure.
+  const imgH = ((caption ? 0.62 : 0.7) * height) - (label ? 64 : 0);
   return (
     <AbsoluteFill style={base}>
       <Background />
-      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 70 }}>
-        <div style={{ position: "relative", opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 28)}px)` }}>
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: 70, flexDirection: "column" }}>
+        {label && (
+          <div style={{ opacity: fade(frame, 6, 14), marginBottom: 20, background: C.accent, color: "#0a0e1f",
+            fontSize: 28, fontWeight: 800, padding: "8px 22px", borderRadius: 12 }}>{label}</div>
+        )}
+        <div style={{ opacity: fade(frame, 8, 16), transform: `translateY(${rise(frame, 8, 18, 28)}px)`,
+          display: "flex", justifyContent: "center" }}>
           <Card>
             {/* cap BOTH dimensions with auto width/height so the browser preserves aspect
                 ratio — a fixed height + maxWidth would clamp width and squish wide figures. */}
             <Img src={staticFile(`assets/${src}`)}
-              style={{ maxHeight: imgH, maxWidth: "84vw", width: "auto", height: "auto" }} />
+              style={{ maxHeight: imgH, maxWidth: "88vw", width: "auto", height: "auto" }} />
           </Card>
-          {label && (
-            <div style={{ position: "absolute", top: -22, left: 36, background: C.accent, color: "#0a0e1f",
-              fontSize: 28, fontWeight: 800, padding: "8px 20px", borderRadius: 12 }}>{label}</div>
-          )}
         </div>
         {caption && (
-          <div style={{ opacity: fade(frame, 24, 16), color: C.dim, fontSize: 34, marginTop: 30,
+          <div style={{ opacity: fade(frame, 24, 16), color: C.dim, fontSize: 34, marginTop: 26,
             textAlign: "center", maxWidth: 1500 }}>{caption}</div>
         )}
       </AbsoluteFill>
