@@ -1,6 +1,6 @@
 [project]
 name = "paperview"
-version = "0.1.0"
+version = "0.1.1"
 description = "Turn a research paper PDF (or a codebase) into a narrated, animated explainer video (deterministic, local)."
 requires-python = ">=3.10"
 dependencies = [
