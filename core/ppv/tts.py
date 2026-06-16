@@ -17,6 +17,7 @@ from pathlib import Path
 import soundfile as sf
 
 from .providers import get_provider
+from .text_norm import normalize_for_tts
 
 CACHE_DIR = Path.home() / ".paperview" / "cache" / "tts"
 
@@ -42,14 +43,17 @@ def synth(plan: dict, out_dir: str, provider: str | None = None, voice: str | No
     records, hits = [], 0
     for s in plan["scenes"]:
         path = audio / f"scene{s['id']}.wav"
-        cpath = (CACHE_DIR / f"{_cache_key(prov, s['narration'], voice, speed)}.wav"
+        # Speak the spoken-form text (numbers/abbreviations rewritten); the plan — and so any
+        # burned subtitle — keeps the original human-readable narration.
+        spoken = normalize_for_tts(s["narration"])
+        cpath = (CACHE_DIR / f"{_cache_key(prov, spoken, voice, speed)}.wav"
                  if cache else None)
         if cpath is not None and cpath.exists():
             shutil.copy2(cpath, path)
             hits += 1
             tag = "cache"
         else:
-            prov.render(s["narration"], voice, speed, str(path))
+            prov.render(spoken, voice, speed, str(path))
             if cpath is not None:
                 shutil.copy2(path, cpath)
             tag = "synth"
